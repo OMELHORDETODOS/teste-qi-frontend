@@ -231,4 +231,6 @@ html,body{
 /* --- Mobile --- */
 @media (min-width:700px){
   .options{grid-template-columns:1fr 1fr}
+  img[alt="Prévia do site"] {
+  display: none !important;
 }
