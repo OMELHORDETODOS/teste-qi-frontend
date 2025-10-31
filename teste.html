@@ -3,14 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Teste de QI Premium - Responda</title>
+  <title>Teste de QI Premium — Responda</title>
+  <meta name="description" content="Responda 42 questões em 10 minutos e descubra seu QI estimado com visual premium dourado.">
   <link rel="stylesheet" href="style.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
 </head>
-<body>
+
+<body class="home-bg">
   <div class="container">
+    <!-- Barra de progresso e timer -->
     <div class="card">
       <div class="progress-wrap">
         <div class="progress"><span id="bar"></span></div>
@@ -18,10 +21,13 @@
       </div>
       <div class="controls">
         <div>Progresso: <b id="progress">0%</b></div>
-        <div class="sound-toggle"><label><input type="checkbox" id="toggleSound" checked> 🔊 Som metálico</label></div>
+        <div class="sound-toggle">
+          <label><input type="checkbox" id="toggleSound" checked> 🔊 Som metálico</label>
+        </div>
       </div>
     </div>
 
+    <!-- Perguntas -->
     <div class="card" id="quiz">
       <div class="q" id="qtext">Carregando...</div>
       <div class="options" id="opts"></div>
@@ -30,13 +36,15 @@
       </audio>
     </div>
 
+    <!-- Paywall / Pagamento -->
     <div class="card paywall" id="paywall">
-      <div class="result-title">🎉 PARABÉNS! VOCÊ ESTÁ ACIMA DA MÉDIA!<br/>LIBERE SEU RESULTADO AGORA.</div>
-      <div class="pay-info">Escolha a forma de pagamento para liberar seu relatório final.</div>
+      <div class="result-title">🎉 PARABÉNS! VOCÊ ESTÁ ACIMA DA MÉDIA!</div>
+      <p class="pay-info">Libere seu resultado completo escolhendo a forma de pagamento:</p>
       <div class="pay-btns">
         <button id="btnCard" class="btn-gold">💳 Pagar com Cartão/Boleto (R$ 4,99)</button>
         <button id="btnPix" class="btn-pix">🟢 Pagar com PIX (R$ 3,99)</button>
       </div>
+
       <div class="qr-wrap" id="qrWrap">
         <img id="qrImg" alt="QR Code PIX"/>
         <button class="btn" id="copyPix">Copiar código PIX</button>
@@ -45,16 +53,18 @@
     </div>
   </div>
 
+  <!-- Tela de resultado -->
   <div class="result-overlay" id="overlay">
     <div class="card result-card">
-      <div class="result-title">🧠 Seu QI estimado é <span id="iqNum">—</span> — <span class="success">Parabéns, mente brilhante!</span></div>
+      <div class="result-title">🧠 Seu QI estimado é <span id="iqNum">—</span></div>
+      <div class="extra-message success">✨ Parabéns, mente brilhante!</div>
     </div>
   </div>
 
 <script>
 const BACKEND_URL = "https://teste-qi-backend-om69.onrender.com";
 
-// ================== PERGUNTAS ÚNICAS (42) ==================
+// ================== PERGUNTAS (42) ==================
 const QUESTIONS = [
   {q:"Se 2 + 2 = ?",a:["3","4","5","6"],c:1},
   {q:"Qual número completa a sequência: 2,4,8,16,...",a:["18","20","24","32"],c:3},
@@ -100,7 +110,7 @@ const QUESTIONS = [
   {q:"Qual a metade de 1,5?",a:["0,5","0,6","0,75","1"],c:2}
 ];
 
-// ================== LÓGICA DO TESTE ==================
+// ================== LÓGICA ==================
 let current=0,correct=0,answers=new Array(QUESTIONS.length).fill(null);
 const qtext=document.getElementById('qtext');
 const opts=document.getElementById('opts');
