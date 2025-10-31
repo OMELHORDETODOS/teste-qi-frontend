@@ -163,8 +163,80 @@ function finish(){
 }
 
 function unlockResult(){
-  iqNum.textContent=localStorage.getItem('qi_est')||"—";
-  overlay.style.display='flex';
+// === PAGAMENTO PIX E CARTÃO COM LOGS ===
+const btnPix = document.getElementById("btnPix");
+const btnCard = document.getElementById("btnCard");
+const qrWrap = document.getElementById("qrWrap");
+const qrImg = document.getElementById("qrImg");
+const copyPix = document.getElementById("copyPix");
+const pixStatus = document.getElementById("pixStatus");
+
+console.log("✅ Script de pagamento carregado.");
+console.log("BACKEND_URL:", BACKEND_URL);
+
+btnPix.addEventListener("click", async () => {
+  console.log("🟡 Clique no botão PIX detectado!");
+  try {
+    const res = await fetch(`${BACKEND_URL}/create-pix`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ amount: 3.99, description: "Resultado Teste de QI Premium" })
+    });
+    console.log("🔹 Resposta bruta do backend:", res);
+    const data = await res.json();
+    console.log("🔸 JSON recebido:", data);
+
+    if (data.qr_code_base64) {
+      qrWrap.style.display = "flex";
+      qrImg.src = `data:image/png;base64,${data.qr_code_base64}`;
+      copyPix.onclick = () => {
+        navigator.clipboard.writeText(data.qr_code);
+        alert("✅ Código PIX copiado!");
+      };
+      const check = setInterval(async () => {
+        try {
+          const sres = await fetch(`${BACKEND_URL}/payment-status/${data.id}`);
+          const sdata = await sres.json();
+          console.log("🔍 Status pagamento:", sdata);
+          if (sdata.status === "approved") {
+            clearInterval(check);
+            unlockResult();
+          }
+        } catch (err) {
+          console.error("Erro no status:", err);
+        }
+      }, 5000);
+    } else {
+      alert("❌ Erro ao gerar QR Code PIX.");
+      console.error(data);
+    }
+  } catch (err) {
+    alert("🚫 Erro ao conectar com o servidor de pagamento!");
+    console.error(err);
+  }
+});
+
+btnCard.addEventListener("click", async () => {
+  console.log("🟢 Clique no botão CARTÃO detectado!");
+  try {
+    const res = await fetch(`${BACKEND_URL}/create-order`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" }
+    });
+    const data = await res.json();
+    console.log("🔹 Resposta JSON Cartão:", data);
+    if (data.init_point) {
+      window.open(data.init_point, "_blank");
+    } else {
+      alert("❌ Erro ao criar pagamento com cartão/boleto.");
+      console.error(data);
+    }
+  } catch (err) {
+    alert("🚫 Erro ao conectar com o servidor de pagamento!");
+    console.error(err);
+  }
+});
+
 }
 
 // TIMER
