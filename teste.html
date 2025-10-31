@@ -162,14 +162,62 @@ function finish(){
   localStorage.setItem('qi_est',iq);
 }
 
-function unlockResult(){
-// === PAGAMENTO PIX E CARTÃO COM LOGS ===
-const btnPix = document.getElementById("btnPix");
-const btnCard = document.getElementById("btnCard");
-const qrWrap = document.getElementById("qrWrap");
-const qrImg = document.getElementById("qrImg");
-const copyPix = document.getElementById("copyPix");
-const pixStatus = document.getElementById("pixStatus");
+async function liberarResultado(orderId) {
+  const res = await fetch(`${BACKEND_URL}/result/${orderId}`);
+  const data = await res.json();
+  if (res.ok) {
+    overlay.style.display = "flex";
+    iqNum.textContent = data.result.score;
+  } else {
+    alert("Pagamento pendente. Aguarde a aprovação.");
+  }
+}
+
+async function iniciarPix() {
+  const correct = correctAnswers();
+  const res = await fetch(`${BACKEND_URL}/create-pix`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ amount: 3.99, description: "Resultado Teste de QI Premium", correct, total: QUESTIONS.length })
+  });
+  const data = await res.json();
+  if (data.qr_code_base64) {
+    document.getElementById("qrWrap").style.display = "flex";
+    document.getElementById("qrImg").src = `data:image/png;base64,${data.qr_code_base64}`;
+    document.getElementById("copyPix").onclick = () => navigator.clipboard.writeText(data.qr_code);
+
+    const check = setInterval(async () => {
+      const s = await fetch(`${BACKEND_URL}/payment-status/${data.id}`).then(r => r.json());
+      if (s.status === "approved") {
+        clearInterval(check);
+        liberarResultado(data.orderId);
+      }
+    }, 5000);
+  }
+}
+
+async function iniciarCartao() {
+  const res = await fetch(`${BACKEND_URL}/create-order`, { method: "POST" });
+  const data = await res.json();
+  if (data.init_point) {
+    window.open(data.init_point, "_blank");
+    const check = setInterval(async () => {
+      const s = await fetch(`${BACKEND_URL}/payment-status/${data.orderId}`).then(r => r.json());
+      if (s.status === "approved") {
+        clearInterval(check);
+        liberarResultado(data.orderId);
+      }
+    }, 5000);
+  }
+}
+
+document.getElementById("btnPix").onclick = iniciarPix;
+document.getElementById("btnCard").onclick = iniciarCartao;
+
+function correctAnswers() {
+  return correct;
+}
+
 
 console.log("✅ Script de pagamento carregado.");
 console.log("BACKEND_URL:", BACKEND_URL);
