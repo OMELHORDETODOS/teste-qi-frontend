@@ -4,23 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Teste de QI Premium — Responda</title>
+  <meta name="description" content="Responda 42 questões em 10 minutos e descubra seu QI estimado com visual premium dourado.">
   <link rel="stylesheet" href="style.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
-  <style>
-    .spinner {
-      border: 3px solid rgba(255,255,255,0.3);
-      border-top: 3px solid gold;
-      border-radius: 50%;
-      width: 16px;
-      height: 16px;
-      animation: spin 1s linear infinite;
-      display: inline-block;
-      margin-right: 8px;
-    }
-    @keyframes spin { 100% { transform: rotate(360deg); } }
-  </style>
 </head>
 
 <body class="home-bg">
@@ -50,14 +38,14 @@
 
     <!-- Paywall / Pagamento -->
     <div class="card paywall" id="paywall" style="display:none">
-      <div class="result-title">🧠 Será que você está acima da média?</div>
-      <p class="pay-info">Descubra seu resultado completo — escolha a forma de pagamento:</p>
+      <div class="result-title">🎉 PARABÉNS! VOCÊ ESTÁ ACIMA DA MÉDIA!</div>
+      <p class="pay-info">Libere seu resultado completo escolhendo a forma de pagamento:</p>
       <div class="pay-btns">
-        <button id="btnCard" class="btn-gold">💳 Cartão/Boleto (R$ 4,99)</button>
-        <button id="btnPix" class="btn-pix">🟢 PIX (R$ 3,99)</button>
+        <button id="btnCard" class="btn-gold">💳 Pagar com Cartão/Boleto (R$ 4,99)</button>
+        <button id="btnPix" class="btn-pix">🟢 Pagar com PIX (R$ 3,99)</button>
       </div>
 
-      <div class="qr-wrap" id="qrWrap" style="display:none;">
+      <div class="qr-wrap" id="qrWrap">
         <img id="qrImg" alt="QR Code PIX"/>
         <button class="btn" id="copyPix">Copiar código PIX</button>
         <div class="chip" id="pixStatus">Aguardando pagamento PIX...</div>
@@ -66,129 +54,184 @@
   </div>
 
   <!-- Tela de resultado -->
-  <div class="result-overlay" id="overlay" style="display:none">
+  <div class="result-overlay" id="overlay">
     <div class="card result-card">
       <div class="result-title">🧠 Seu QI estimado é <span id="iqNum">—</span></div>
-      <div id="iqPhrase" class="extra-message success"></div>
-      <button class="btn" id="retry">🔁 Refazer o teste</button>
+      <div class="extra-message success">✨ Parabéns, mente brilhante!</div>
     </div>
   </div>
 
 <script>
-document.addEventListener("DOMContentLoaded", () => {
-  const BACKEND_URL = "https://teste-qi-backend-om69.onrender.com";
+const BACKEND_URL = "https://teste-qi-backend-om69.onrender.com";
 
-  const QUESTIONS = [
-    {q:"Se 2 + 2 = ?",a:["3","4","5","6"],c:1},
-    {q:"Qual número completa a sequência: 2,4,8,16,...",a:["18","20","24","32"],c:3},
-    {q:"Qual é o oposto lógico de 'todos'?",a:["alguns","nenhum","vários","muitos"],c:1},
-    {q:"Se João é mais alto que Ana e Ana é mais alta que Pedro, quem é o mais baixo?",a:["João","Ana","Pedro","Iguais"],c:2},
-    {q:"Quantos graus há em um ângulo reto?",a:["45°","90°","120°","180°"],c:1},
-    {q:"Qual número é ímpar?",a:["14","28","37","52"],c:2},
-    {q:"Se todos os corvos são pretos e este pássaro é um corvo, sua cor é:",a:["azul","preto","branco","marrom"],c:1},
-    {q:"3,6,9,12,... Qual o próximo?",a:["13","14","15","18"],c:2},
-    {q:"Qual palavra NÃO é sinônimo de 'rápido'?",a:["veloz","ligeiro","célere","lerdo"],c:3},
-    {q:"Se x=5, quanto é 3x + 2?",a:["15","17","18","12"],c:1},
-    {q:"Um hexágono tem:",a:["5 lados","6 lados","7 lados","8 lados"],c:1},
-    {q:"A sequência 1,1,2,3,5,8 representa:",a:["primos","Fibonacci","pares","ímpares"],c:1},
-    {q:"Se um relógio marca 15:00, quantos minutos até 17:15?",a:["120","135","150","165"],c:1},
-    {q:"Qual número é múltiplo de 7?",a:["21","22","24","28"],c:0},
-    {q:"Qual figura tem todos os lados iguais e ângulos iguais?",a:["retângulo","losango","quadrado","trapézio"],c:2},
-    {q:"Se A>B e B>C, então:",a:["A<C","A>C","A=B","C>A"],c:1},
-    {q:"Qual é a raiz quadrada de 144?",a:["10","11","12","14"],c:2},
-    {q:"Complete: 5,10,20,40,...",a:["45","60","70","80"],c:3},
-    {q:"Qual fração é equivalente a 1/2?",a:["2/4","3/6","4/8","todas"],c:3},
-    {q:"Qual é o maior número primo abaixo de 20?",a:["13","17","19","23"],c:2},
-    {q:"Se uma sala tem 4 cantos e adiciono um gato em cada canto, quantos gatos?",a:["4","5","8","16"],c:0},
-    {q:"Qual é a média de 2,4,6,8?",a:["4","5","6","7"],c:1},
-    {q:"Que número falta: 9,7,5,3,...",a:["1","2","0","-1"],c:0},
-    {q:"Qual número romano representa 50?",a:["L","C","V","X"],c:0},
-    {q:"Se 'casa' está para 'moradia', então 'escola' está para:",a:["trabalho","educação","esporte","comida"],c:1},
-    {q:"Qual é 15% de 200?",a:["25","30","35","40"],c:1},
-    {q:"Se 3³ = ?",a:["6","9","27","81"],c:2},
-    {q:"Qual é o antecessor de 0?",a:["-2","-1","1","0 não tem"],c:1},
-    {q:"Qual forma tem 3 lados?",a:["quadrado","triângulo","pentágono","círculo"],c:1},
-    {q:"Se hoje é segunda, daqui 10 dias será:",a:["quinta","sexta","sábado","domingo"],c:2},
-    {q:"Complete: 2,5,11,23,...",a:["35","44","47","49"],c:3},
-    {q:"Qual é o dobro de 3/4?",a:["1/2","3/2","6/4","3/4"],c:1},
-    {q:"Qual é a capital do Brasil?",a:["Rio","Brasília","São Paulo","Salvador"],c:1},
-    {q:"Qual a soma dos ângulos internos de um triângulo?",a:["90°","120°","180°","270°"],c:2},
-    {q:"Se 5 pessoas comem 5 pães em 5 min, 1 pessoa come 1 pão em:",a:["1 min","5 min","10 min","25 min"],c:1},
-    {q:"Se m = 12, m/3 + 2 =",a:["4","6","8","10"],c:2},
-    {q:"Qual é o sucessor de -1?",a:["-3","-2","0","1"],c:2},
-    {q:"Qual dos seguintes é par?",a:["31","33","35","36"],c:3},
-    {q:"Que número falta: 4,9,16,25,...",a:["30","32","36","40"],c:2},
-    {q:"Qual é 9 × 7?",a:["54","56","63","72"],c:2},
-    {q:"Se um ano tem 365 dias, quantas horas tem?",a:["8760","8784","8800","8640"],c:0},
-    {q:"Qual a metade de 1,5?",a:["0,5","0,6","0,75","1"],c:2}
-  ];
+// ================== PERGUNTAS (42) ==================
+const QUESTIONS = [
+  {q:"Se 2 + 2 = ?",a:["3","4","5","6"],c:1},
+  {q:"Qual número completa a sequência: 2,4,8,16,...",a:["18","20","24","32"],c:3},
+  {q:"Qual é o oposto lógico de 'todos'?",a:["alguns","nenhum","vários","muitos"],c:1},
+  {q:"Se João é mais alto que Ana e Ana é mais alta que Pedro, quem é o mais baixo?",a:["João","Ana","Pedro","Iguais"],c:2},
+  {q:"Quantos graus há em um ângulo reto?",a:["45°","90°","120°","180°"],c:1},
+  {q:"Qual número é ímpar?",a:["14","28","37","52"],c:2},
+  {q:"Se todos os corvos são pretos e este pássaro é um corvo, sua cor é:",a:["azul","preto","branco","marrom"],c:1},
+  {q:"3,6,9,12,... Qual o próximo?",a:["13","14","15","18"],c:2},
+  {q:"Qual palavra NÃO é sinônimo de 'rápido'?",a:["veloz","ligeiro","célere","lerdo"],c:3},
+  {q:"Se x=5, quanto é 3x + 2?",a:["15","17","18","12"],c:1},
+  {q:"Um hexágono tem:",a:["5 lados","6 lados","7 lados","8 lados"],c:1},
+  {q:"A sequência 1,1,2,3,5,8 representa:",a:["primos","Fibonacci","pares","ímpares"],c:1},
+  {q:"Se um relógio marca 15:00, quantos minutos até 17:15?",a:["120","135","150","165"],c:1},
+  {q:"Qual número é múltiplo de 7?",a:["21","22","24","28"],c:0},
+  {q:"Qual figura tem todos os lados iguais e ângulos iguais?",a:["retângulo","losango","quadrado","trapézio"],c:2},
+  {q:"Se A>B e B>C, então:",a:["A<C","A>C","A=B","C>A"],c:1},
+  {q:"Qual é a raiz quadrada de 144?",a:["10","11","12","14"],c:2},
+  {q:"Complete: 5,10,20,40,...",a:["45","60","70","80"],c:3},
+  {q:"Qual fração é equivalente a 1/2?",a:["2/4","3/6","4/8","todas"],c:3},
+  {q:"Qual é o maior número primo abaixo de 20?",a:["13","17","19","23"],c:2},
+  {q:"Se uma sala tem 4 cantos e adiciono um gato em cada canto, quantos gatos?",a:["4","5","8","16"],c:0},
+  {q:"Qual é a média de 2,4,6,8?",a:["4","5","6","7"],c:1},
+  {q:"Que número falta: 9,7,5,3,...",a:["1","2","0","-1"],c:0},
+  {q:"Qual número romano representa 50?",a:["L","C","V","X"],c:0},
+  {q:"Se 'casa' está para 'moradia', então 'escola' está para:",a:["trabalho","educação","esporte","comida"],c:1},
+  {q:"Qual é 15% de 200?",a:["25","30","35","40"],c:1},
+  {q:"Se 3³ = ?",a:["6","9","27","81"],c:2},
+  {q:"Qual é o antecessor de 0?",a:["-2","-1","1","0 não tem"],c:1},
+  {q:"Qual forma tem 3 lados?",a:["quadrado","triângulo","pentágono","círculo"],c:1},
+  {q:"Se hoje é segunda, daqui 10 dias será:",a:["quinta","sexta","sábado","domingo"],c:2},
+  {q:"Complete: 2,5,11,23,...",a:["35","44","47","49"],c:3},
+  {q:"Qual é o dobro de 3/4?",a:["1/2","3/2","6/4","3/4"],c:1},
+  {q:"Qual é a capital do Brasil?",a:["Rio","Brasília","São Paulo","Salvador"],c:1},
+  {q:"Qual a soma dos ângulos internos de um triângulo?",a:["90°","120°","180°","270°"],c:2},
+  {q:"Se 5 pessoas comem 5 pães em 5 min, 1 pessoa come 1 pão em:",a:["1 min","5 min","10 min","25 min"],c:1},
+  {q:"Se m = 12, m/3 + 2 =",a:["4","6","8","10"],c:2},
+  {q:"Qual é o sucessor de -1?",a:["-3","-2","0","1"],c:2},
+  {q:"Qual dos seguintes é par?",a:["31","33","35","36"],c:3},
+  {q:"Que número falta: 4,9,16,25,...",a:["30","32","36","40"],c:2},
+  {q:"Qual é 9 × 7?",a:["54","56","63","72"],c:2},
+  {q:"Se um ano tem 365 dias, quantas horas tem?",a:["8760","8784","8800","8640"],c:0},
+  {q:"Qual a metade de 1,5?",a:["0,5","0,6","0,75","1"],c:2}
+];
 
-  let current=0,correct=0;
-  const qtext=document.getElementById('qtext');
-  const opts=document.getElementById('opts');
-  const bar=document.getElementById('bar');
-  const prog=document.getElementById('progress');
-  const paywall=document.getElementById('paywall');
-  const overlay=document.getElementById('overlay');
-  const iqNum=document.getElementById('iqNum');
-  const phrase=document.getElementById('iqPhrase');
-  const clickSound=document.getElementById('clickSound');
-  const retry=document.getElementById('retry');
-  let allowSound=true;
+// ================== LÓGICA ==================
+let current=0,correct=0;
+const qtext=document.getElementById('qtext');
+const opts=document.getElementById('opts');
+const bar=document.getElementById('bar');
+const prog=document.getElementById('progress');
+const paywall=document.getElementById('paywall');
+const overlay=document.getElementById('overlay');
+const iqNum=document.getElementById('iqNum');
+const clickSound=document.getElementById('clickSound');
+let allowSound=true;
 
-  document.getElementById('toggleSound').addEventListener('change',e=>allowSound=e.target.checked);
+document.getElementById('toggleSound').addEventListener('change',e=>allowSound=e.target.checked);
+function metallicClick(){ if(allowSound){ try{ clickSound.currentTime=0; clickSound.play(); }catch(e){} } }
 
-  function metallicClick(){ if(allowSound){ try{ clickSound.currentTime=0; clickSound.play(); }catch(e){} } }
+function render(){
+  const item=QUESTIONS[current];
+  qtext.textContent=(current+1)+"/"+QUESTIONS.length+" — "+item.q;
+  opts.innerHTML="";
+  item.a.forEach((t,i)=>{
+    const div=document.createElement('label');
+    div.className='option';
+    div.innerHTML=`<span class='badge'>${['A','B','C','D'][i]}</span> ${t}`;
+    div.onclick=()=>select(i);
+    opts.appendChild(div);
+  });
+  updateProgress();
+}
 
-  function render(){
-    const item=QUESTIONS[current];
-    if(!item)return finish();
-    qtext.textContent=(current+1)+"/"+QUESTIONS.length+" — "+item.q;
-    opts.innerHTML="";
-    item.a.forEach((t,i)=>{
-      const div=document.createElement('label');
-      div.className='option';
-      div.innerHTML=`<span class='badge'>${['A','B','C','D'][i]}</span> ${t}`;
-      div.onclick=()=>select(i);
-      opts.appendChild(div);
-    });
-    updateProgress();
+function updateProgress(){
+  const p=Math.round((current/QUESTIONS.length)*100);
+  bar.style.width=p+"%";
+  prog.textContent=p+"%";
+}
+
+function select(i){
+  metallicClick();
+  if(i===QUESTIONS[current].c)correct++;
+  if(current<QUESTIONS.length-1){current++;render();}else finish();
+}
+
+function finish(){
+  clearInterval(window._tick);
+  document.getElementById('quiz').style.display='none';
+  paywall.style.display='flex';
+  bar.style.width="100%";
+  prog.textContent="100%";
+  localStorage.setItem('qi_est',correct);
+}
+
+// ================== PAGAMENTO ==================
+async function liberarResultado(orderId) {
+  const res = await fetch(`${BACKEND_URL}/result/${orderId}`);
+  const data = await res.json();
+  if (res.ok) {
+    overlay.style.display = "flex";
+    iqNum.textContent = data.result.score;
+  } else {
+    alert("Pagamento pendente. Aguarde a aprovação.");
   }
+}
 
-  function updateProgress(){
-    const p=Math.round((current/QUESTIONS.length)*100);
-    bar.style.width=p+"%";
-    prog.textContent=p+"%";
+async function iniciarPix() {
+  const res = await fetch(`${BACKEND_URL}/create-pix`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      amount: 3.99,
+      description: "Resultado Teste de QI Premium",
+      correct,
+      total: QUESTIONS.length
+    })
+  });
+  const data = await res.json();
+
+  if (data.qr_code_base64) {
+    const qrWrap = document.getElementById("qrWrap");
+    const qrImg = document.getElementById("qrImg");
+    const copyPix = document.getElementById("copyPix");
+    qrWrap.style.display = "flex";
+    qrImg.src = `data:image/png;base64,${data.qr_code_base64}`;
+    copyPix.onclick = () => navigator.clipboard.writeText(data.qr_code);
+
+    const check = setInterval(async () => {
+      const s = await fetch(`${BACKEND_URL}/payment-status/${data.id}`).then(r => r.json());
+      if (s.status === "approved") {
+        clearInterval(check);
+        liberarResultado(data.orderId);
+      }
+    }, 5000);
   }
+}
 
-  function select(i){
-    metallicClick();
-    if(i===QUESTIONS[current].c)correct++;
-    if(current<QUESTIONS.length-1){current++;render();}else finish();
+async function iniciarCartao() {
+  const res = await fetch(`${BACKEND_URL}/create-order`, { method: "POST" });
+  const data = await res.json();
+  if (data.init_point) {
+    window.open(data.init_point, "_blank");
+    const check = setInterval(async () => {
+      const s = await fetch(`${BACKEND_URL}/payment-status/${data.orderId}`).then(r => r.json());
+      if (s.status === "approved") {
+        clearInterval(check);
+        liberarResultado(data.orderId);
+      }
+    }, 5000);
   }
+}
 
-  function finish(){
-    clearInterval(window._tick);
-    document.getElementById('quiz').style.display='none';
-    paywall.style.display='flex';
-    bar.style.width="100%";
-    prog.textContent="100%";
-  }
+document.getElementById("btnPix").onclick = iniciarPix;
+document.getElementById("btnCard").onclick = iniciarCartao;
 
-  retry.onclick=()=>{window.location.reload();};
+// TIMER
+let sec=600;
+window._tick=setInterval(()=>{
+  sec--;
+  const m=String(Math.floor(sec/60)).padStart(2,'0');
+  const s=String(sec%60).padStart(2,'0');
+  document.getElementById('timer').textContent=`${m}:${s}`;
+  if(sec<=0)finish();
+},1000);
 
-  // TIMER
-  let sec=600;
-  window._tick=setInterval(()=>{
-    sec--;
-    const m=String(Math.floor(sec/60)).padStart(2,'0');
-    const s=String(sec%60).padStart(2,'0');
-    document.getElementById('timer').textContent=`${m}:${s}`;
-    if(sec<=0)finish();
-  },1000);
-
-  render();
-});
+render();
 </script>
 </body>
 </html>
