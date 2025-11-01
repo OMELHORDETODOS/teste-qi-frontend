@@ -52,14 +52,14 @@
 
     <!-- Paywall / Pagamento -->
     <div class="card paywall" id="paywall" style="display:none">
-      <div class="result-title">🎉 PARABÉNS! VOCÊ ESTÁ ACIMA DA MÉDIA!</div>
-      <p class="pay-info">Libere seu resultado completo escolhendo a forma de pagamento:</p>
+      <div class="result-title">🧠 Será que você está acima da média?</div>
+      <p class="pay-info">Descubra seu resultado completo — escolha a forma de pagamento:</p>
       <div class="pay-btns">
         <button id="btnCard" class="btn-gold">💳 Pagar com Cartão/Boleto (R$ 4,99)</button>
         <button id="btnPix" class="btn-pix">🟢 Pagar com PIX (R$ 3,99)</button>
       </div>
 
-      <div class="qr-wrap" id="qrWrap">
+      <div class="qr-wrap" id="qrWrap" style="display:none;">
         <img id="qrImg" alt="QR Code PIX"/>
         <button class="btn" id="copyPix">Copiar código PIX</button>
         <div class="chip" id="pixStatus">Aguardando pagamento PIX...</div>
@@ -68,17 +68,18 @@
   </div>
 
   <!-- Tela de resultado -->
-  <div class="result-overlay" id="overlay">
+  <div class="result-overlay" id="overlay" style="display:none">
     <div class="card result-card">
       <div class="result-title">🧠 Seu QI estimado é <span id="iqNum">—</span></div>
-      <div class="extra-message success">✨ Parabéns, mente brilhante!</div>
+      <div id="iqPhrase" class="extra-message success"></div>
+      <button class="btn" id="retry">🔁 Refazer o teste</button>
     </div>
   </div>
 
 <script>
 const BACKEND_URL = "https://teste-qi-backend-om69.onrender.com";
 
-// ================== PERGUNTAS ==================
+// ================== PERGUNTAS (42) ==================
 const QUESTIONS = [
   {q:"Se 2 + 2 = ?",a:["3","4","5","6"],c:1},
   {q:"Qual número completa a sequência: 2,4,8,16,...",a:["18","20","24","32"],c:3},
@@ -132,6 +133,7 @@ const prog=document.getElementById('progress');
 const paywall=document.getElementById('paywall');
 const overlay=document.getElementById('overlay');
 const iqNum=document.getElementById('iqNum');
+const iqPhrase=document.getElementById('iqPhrase');
 const clickSound=document.getElementById('clickSound');
 let allowSound=true;
 
@@ -180,9 +182,21 @@ async function liberarResultado(orderId) {
   if (res.ok) {
     overlay.style.display = "flex";
     iqNum.textContent = data.result.score;
+    iqPhrase.textContent = frasePorQI(data.result.score);
   } else {
     alert("Pagamento pendente. Aguarde a aprovação.");
   }
+}
+
+// Frases automáticas conforme QI
+function frasePorQI(qi) {
+  if (qi <= 80) return "💪 Não existe limite para o crescimento. Treine sua mente e supere-se!";
+  if (qi <= 90) return "🔥 Cada desafio é uma chance de evoluir. Continue treinando sua mente!";
+  if (qi <= 100) return "⚡ Você está na média! Continue se desafiando e vá além.";
+  if (qi <= 110) return "🏅 Parabéns! Sua mente está acima da média. Continue se aperfeiçoando!";
+  if (qi <= 120) return "💡 Excelente raciocínio! Sua mente trabalha de forma afiada e precisa.";
+  if (qi <= 130) return "🌟 Parabéns, mente brilhante! Você está entre as mentes mais afiadas!";
+  return "🚀 Gênio! Sua mente é extraordinária. Use esse dom para conquistar o impossível!";
 }
 
 async function iniciarPix() {
@@ -194,7 +208,12 @@ async function iniciarPix() {
     const res = await fetch(`${BACKEND_URL}/create-pix`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ amount: 3.99, description: "Resultado Teste de QI Premium", correct, total: QUESTIONS.length })
+      body: JSON.stringify({
+        amount: 3.99,
+        description: "Resultado Teste de QI Premium",
+        correct,
+        total: QUESTIONS.length
+      })
     });
     const data = await res.json();
 
@@ -251,7 +270,6 @@ async function iniciarCartao() {
 document.getElementById("btnPix").onclick = iniciarPix;
 document.getElementById("btnCard").onclick = iniciarCartao;
 
-// TIMER
 let sec=600;
 window._tick=setInterval(()=>{
   sec--;
