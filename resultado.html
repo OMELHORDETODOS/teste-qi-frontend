@@ -49,14 +49,6 @@
       line-height: 1.5;
     }
 
-    img {
-      max-width: 100%;
-      border-radius: 16px;
-      border: 1px solid rgba(255,255,255,0.1);
-      box-shadow: 0 0 20px rgba(212,175,55,0.25);
-      margin-top: 25px;
-    }
-
     footer {
       margin-top: 35px;
       text-align: center;
@@ -119,8 +111,6 @@
     <p>O resultado aparecerá automaticamente após a confirmação do pagamento.<br>
     Volte para a aba do teste — não é necessário recarregar a página.</p>
 
-    <img src="img/preview-teste.png" alt="Prévia do teste" />
-
     <div class="share-btns">
       <button id="shareWhatsApp">📱 Compartilhar no WhatsApp</button>
       <button id="shareInsta">📸 Copiar texto para Stories</button>
@@ -134,19 +124,20 @@
   </footer>
 
   <script>
-    // Links de compartilhamento
+    // Compartilhamento WhatsApp
     document.getElementById("shareWhatsApp").onclick = () => {
       const msg = `🧠 Fiz o Teste de QI Premium e o visual é incrível!\nDescubra o seu resultado agora 👉 ${window.location.origin}`;
       window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`);
     };
 
+    // Copiar texto para Instagram Stories
     document.getElementById("shareInsta").onclick = () => {
       const txt = `💎 Teste de QI Premium\nDescubra o seu nível de inteligência e compare com a média!\n${window.location.origin}`;
       navigator.clipboard.writeText(txt);
       alert("✅ Texto copiado! Cole no seu Story do Instagram!");
     };
 
-    // Botão de refazer o teste
+    // Refazer o teste
     document.getElementById("retryTest").onclick = () => {
       window.location.href = window.location.origin + "/index.html";
     };
