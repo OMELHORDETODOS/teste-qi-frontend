@@ -9,6 +9,20 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    .spinner {
+      border: 3px solid rgba(255,255,255,0.3);
+      border-top: 3px solid gold;
+      border-radius: 50%;
+      width: 16px;
+      height: 16px;
+      animation: spin 1s linear infinite;
+      display: inline-block;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+    @keyframes spin { 100% { transform: rotate(360deg); } }
+  </style>
 </head>
 
 <body class="home-bg">
@@ -64,7 +78,7 @@
 <script>
 const BACKEND_URL = "https://teste-qi-backend-om69.onrender.com";
 
-// ================== PERGUNTAS (42) ==================
+// ================== PERGUNTAS ==================
 const QUESTIONS = [
   {q:"Se 2 + 2 = ?",a:["3","4","5","6"],c:1},
   {q:"Qual número completa a sequência: 2,4,8,16,...",a:["18","20","24","32"],c:3},
@@ -110,7 +124,6 @@ const QUESTIONS = [
   {q:"Qual a metade de 1,5?",a:["0,5","0,6","0,75","1"],c:2}
 ];
 
-// ================== LÓGICA ==================
 let current=0,correct=0;
 const qtext=document.getElementById('qtext');
 const opts=document.getElementById('opts');
@@ -173,48 +186,65 @@ async function liberarResultado(orderId) {
 }
 
 async function iniciarPix() {
-  const res = await fetch(`${BACKEND_URL}/create-pix`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      amount: 3.99,
-      description: "Resultado Teste de QI Premium",
-      correct,
-      total: QUESTIONS.length
-    })
-  });
-  const data = await res.json();
+  const btnPix = document.getElementById("btnPix");
+  btnPix.innerHTML = `<span class='spinner'></span>CARREGANDO PIX...`;
+  btnPix.disabled = true;
 
-  if (data.qr_code_base64) {
-    const qrWrap = document.getElementById("qrWrap");
-    const qrImg = document.getElementById("qrImg");
-    const copyPix = document.getElementById("copyPix");
-    qrWrap.style.display = "flex";
-    qrImg.src = `data:image/png;base64,${data.qr_code_base64}`;
-    copyPix.onclick = () => navigator.clipboard.writeText(data.qr_code);
+  try {
+    const res = await fetch(`${BACKEND_URL}/create-pix`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ amount: 3.99, description: "Resultado Teste de QI Premium", correct, total: QUESTIONS.length })
+    });
+    const data = await res.json();
 
-    const check = setInterval(async () => {
-      const s = await fetch(`${BACKEND_URL}/payment-status/${data.id}`).then(r => r.json());
-      if (s.status === "approved") {
-        clearInterval(check);
-        liberarResultado(data.orderId);
-      }
-    }, 5000);
+    if (data.qr_code_base64) {
+      const qrWrap = document.getElementById("qrWrap");
+      const qrImg = document.getElementById("qrImg");
+      const copyPix = document.getElementById("copyPix");
+      qrWrap.style.display = "flex";
+      qrImg.src = `data:image/png;base64,${data.qr_code_base64}`;
+      copyPix.onclick = () => navigator.clipboard.writeText(data.qr_code);
+
+      const check = setInterval(async () => {
+        const s = await fetch(`${BACKEND_URL}/payment-status/${data.id}`).then(r => r.json());
+        if (s.status === "approved") {
+          clearInterval(check);
+          liberarResultado(data.orderId);
+        }
+      }, 5000);
+    }
+  } catch (e) {
+    alert("Erro ao iniciar o pagamento PIX.");
+  } finally {
+    btnPix.innerHTML = "🟢 Pagar com PIX (R$ 3,99)";
+    btnPix.disabled = false;
   }
 }
 
 async function iniciarCartao() {
-  const res = await fetch(`${BACKEND_URL}/create-order`, { method: "POST" });
-  const data = await res.json();
-  if (data.init_point) {
-    window.open(data.init_point, "_blank");
-    const check = setInterval(async () => {
-      const s = await fetch(`${BACKEND_URL}/payment-status/${data.orderId}`).then(r => r.json());
-      if (s.status === "approved") {
-        clearInterval(check);
-        liberarResultado(data.orderId);
-      }
-    }, 5000);
+  const btnCard = document.getElementById("btnCard");
+  btnCard.innerHTML = `<span class='spinner'></span>CARREGANDO CARTÃO...`;
+  btnCard.disabled = true;
+
+  try {
+    const res = await fetch(`${BACKEND_URL}/create-order`, { method: "POST" });
+    const data = await res.json();
+    if (data.init_point) {
+      window.open(data.init_point, "_blank");
+      const check = setInterval(async () => {
+        const s = await fetch(`${BACKEND_URL}/payment-status/${data.orderId}`).then(r => r.json());
+        if (s.status === "approved") {
+          clearInterval(check);
+          liberarResultado(data.orderId);
+        }
+      }, 5000);
+    }
+  } catch (e) {
+    alert("Erro ao iniciar o pagamento com cartão.");
+  } finally {
+    btnCard.innerHTML = "💳 Pagar com Cartão/Boleto (R$ 4,99)";
+    btnCard.disabled = false;
   }
 }
 
