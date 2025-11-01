@@ -138,6 +138,7 @@ const clickSound=document.getElementById('clickSound');
 let allowSound=true;
 
 document.getElementById('toggleSound').addEventListener('change',e=>allowSound=e.target.checked);
+
 function metallicClick(){ if(allowSound){ try{ clickSound.currentTime=0; clickSound.play(); }catch(e){} } }
 
 function render(){
@@ -188,7 +189,6 @@ async function liberarResultado(orderId) {
   }
 }
 
-// Frases automáticas conforme QI
 function frasePorQI(qi) {
   if (qi <= 80) return "💪 Não existe limite para o crescimento. Treine sua mente e supere-se!";
   if (qi <= 90) return "🔥 Cada desafio é uma chance de evoluir. Continue treinando sua mente!";
@@ -197,6 +197,28 @@ function frasePorQI(qi) {
   if (qi <= 120) return "💡 Excelente raciocínio! Sua mente trabalha de forma afiada e precisa.";
   if (qi <= 130) return "🌟 Parabéns, mente brilhante! Você está entre as mentes mais afiadas!";
   return "🚀 Gênio! Sua mente é extraordinária. Use esse dom para conquistar o impossível!";
+}
+
+async function monitorarPagamento(orderId, idPix) {
+  let tentativas = 0;
+  const statusEl = document.getElementById("pixStatus");
+  const intervalo = setInterval(async () => {
+    tentativas++;
+    try {
+      const s = await fetch(`${BACKEND_URL}/payment-status/${idPix}`).then(r => r.json());
+      if (s.status === "approved") {
+        clearInterval(intervalo);
+        statusEl.textContent = "✅ Pagamento aprovado! Exibindo resultado...";
+        liberarResultado(orderId);
+      } else if (tentativas > 60) {
+        clearInterval(intervalo);
+        statusEl.textContent = "⚠️ Ainda aguardando confirmação. Isso pode levar alguns minutos...";
+      }
+    } catch {
+      clearInterval(intervalo);
+      statusEl.textContent = "❌ Erro ao verificar o status do pagamento.";
+    }
+  }, 5000);
 }
 
 async function iniciarPix() {
@@ -224,16 +246,11 @@ async function iniciarPix() {
       qrWrap.style.display = "flex";
       qrImg.src = `data:image/png;base64,${data.qr_code_base64}`;
       copyPix.onclick = () => navigator.clipboard.writeText(data.qr_code);
-
-      const check = setInterval(async () => {
-        const s = await fetch(`${BACKEND_URL}/payment-status/${data.id}`).then(r => r.json());
-        if (s.status === "approved") {
-          clearInterval(check);
-          liberarResultado(data.orderId);
-        }
-      }, 5000);
+      monitorarPagamento(data.orderId, data.id);
+    } else {
+      alert("Erro ao gerar QR Code PIX.");
     }
-  } catch (e) {
+  } catch {
     alert("Erro ao iniciar o pagamento PIX.");
   } finally {
     btnPix.innerHTML = "🟢 Pagar com PIX (R$ 3,99)";
@@ -251,15 +268,11 @@ async function iniciarCartao() {
     const data = await res.json();
     if (data.init_point) {
       window.open(data.init_point, "_blank");
-      const check = setInterval(async () => {
-        const s = await fetch(`${BACKEND_URL}/payment-status/${data.orderId}`).then(r => r.json());
-        if (s.status === "approved") {
-          clearInterval(check);
-          liberarResultado(data.orderId);
-        }
-      }, 5000);
+      monitorarPagamento(data.orderId, data.id);
+    } else {
+      alert("Erro ao criar pagamento com cartão/boleto.");
     }
-  } catch (e) {
+  } catch {
     alert("Erro ao iniciar o pagamento com cartão.");
   } finally {
     btnCard.innerHTML = "💳 Pagar com Cartão/Boleto (R$ 4,99)";
