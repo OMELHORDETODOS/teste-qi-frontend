@@ -72,14 +72,14 @@
     <div class="card result-card">
       <div class="result-title">🧠 Seu QI estimado é <span id="iqNum">—</span></div>
       <div id="iqPhrase" class="extra-message success"></div>
-      <button class="btn" id="retry">🔁 Refazer o teste</button>
+      <button class="btn" id="retry" onclick="location.reload()">🔁 Refazer o teste</button>
     </div>
   </div>
 
 <script>
 const BACKEND_URL = "https://teste-qi-backend-om69.onrender.com";
 
-// ================== PERGUNTAS (42) ==================
+// ================== PERGUNTAS ==================
 const QUESTIONS = [
   {q:"Se 2 + 2 = ?",a:["3","4","5","6"],c:1},
   {q:"Qual número completa a sequência: 2,4,8,16,...",a:["18","20","24","32"],c:3},
@@ -134,12 +134,6 @@ const paywall=document.getElementById('paywall');
 const overlay=document.getElementById('overlay');
 const iqNum=document.getElementById('iqNum');
 const iqPhrase=document.getElementById('iqPhrase');
-const clickSound=document.getElementById('clickSound');
-let allowSound=true;
-
-document.getElementById('toggleSound').addEventListener('change',e=>allowSound=e.target.checked);
-
-function metallicClick(){ if(allowSound){ try{ clickSound.currentTime=0; clickSound.play(); }catch(e){} } }
 
 function render(){
   const item=QUESTIONS[current];
@@ -152,17 +146,11 @@ function render(){
     div.onclick=()=>select(i);
     opts.appendChild(div);
   });
-  updateProgress();
-}
-
-function updateProgress(){
-  const p=Math.round((current/QUESTIONS.length)*100);
-  bar.style.width=p+"%";
-  prog.textContent=p+"%";
+  bar.style.width=(current/QUESTIONS.length*100)+"%";
+  prog.textContent=Math.round((current/QUESTIONS.length)*100)+"%";
 }
 
 function select(i){
-  metallicClick();
   if(i===QUESTIONS[current].c)correct++;
   if(current<QUESTIONS.length-1){current++;render();}else finish();
 }
@@ -176,19 +164,7 @@ function finish(){
   localStorage.setItem('qi_est',correct);
 }
 
-// ================== PAGAMENTO ==================
-async function liberarResultado(orderId) {
-  const res = await fetch(`${BACKEND_URL}/result/${orderId}`);
-  const data = await res.json();
-  if (res.ok) {
-    overlay.style.display = "flex";
-    iqNum.textContent = data.result.score;
-    iqPhrase.textContent = frasePorQI(data.result.score);
-  } else {
-    alert("Pagamento pendente. Aguarde a aprovação.");
-  }
-}
-
+// Função de frase
 function frasePorQI(qi) {
   if (qi <= 80) return "💪 Não existe limite para o crescimento. Treine sua mente e supere-se!";
   if (qi <= 90) return "🔥 Cada desafio é uma chance de evoluir. Continue treinando sua mente!";
@@ -199,89 +175,88 @@ function frasePorQI(qi) {
   return "🚀 Gênio! Sua mente é extraordinária. Use esse dom para conquistar o impossível!";
 }
 
+async function liberarResultado(orderId) {
+  try {
+    const res = await fetch(`${BACKEND_URL}/result/${orderId}`);
+    const data = await res.json();
+    overlay.style.display = "flex";
+    let score = (data && data.result && data.result.score) ? data.result.score : Math.round((correct / QUESTIONS.length) * 160);
+    iqNum.textContent = score;
+    iqPhrase.textContent = frasePorQI(score);
+  } catch {
+    // fallback se o backend não responde
+    overlay.style.display = "flex";
+    const score = Math.round((correct / QUESTIONS.length) * 160);
+    iqNum.textContent = score;
+    iqPhrase.textContent = frasePorQI(score);
+  }
+}
+
 async function monitorarPagamento(orderId, idPix) {
-  let tentativas = 0;
   const statusEl = document.getElementById("pixStatus");
-  const intervalo = setInterval(async () => {
+  let tentativas = 0;
+  const check = setInterval(async () => {
     tentativas++;
     try {
       const s = await fetch(`${BACKEND_URL}/payment-status/${idPix}`).then(r => r.json());
       if (s.status === "approved") {
-        clearInterval(intervalo);
+        clearInterval(check);
         statusEl.textContent = "✅ Pagamento aprovado! Exibindo resultado...";
-        liberarResultado(orderId);
+        setTimeout(()=>liberarResultado(orderId),1500);
       } else if (tentativas > 60) {
-        clearInterval(intervalo);
-        statusEl.textContent = "⚠️ Ainda aguardando confirmação. Isso pode levar alguns minutos...";
+        clearInterval(check);
+        statusEl.textContent = "⚠️ Aguardando confirmação, isso pode levar alguns minutos...";
       }
     } catch {
-      clearInterval(intervalo);
-      statusEl.textContent = "❌ Erro ao verificar o status do pagamento.";
+      clearInterval(check);
+      statusEl.textContent = "❌ Erro ao verificar status.";
     }
   }, 5000);
 }
 
 async function iniciarPix() {
-  const btnPix = document.getElementById("btnPix");
-  btnPix.innerHTML = `<span class='spinner'></span>CARREGANDO PIX...`;
-  btnPix.disabled = true;
-
+  const btnPix=document.getElementById("btnPix");
+  btnPix.innerHTML="<span class='spinner'></span>CARREGANDO PIX...";
+  btnPix.disabled=true;
   try {
-    const res = await fetch(`${BACKEND_URL}/create-pix`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        amount: 3.99,
-        description: "Resultado Teste de QI Premium",
-        correct,
-        total: QUESTIONS.length
-      })
+    const res=await fetch(`${BACKEND_URL}/create-pix`,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({amount:3.99,description:"Resultado Teste de QI Premium",correct,total:QUESTIONS.length})
     });
-    const data = await res.json();
-
-    if (data.qr_code_base64) {
-      const qrWrap = document.getElementById("qrWrap");
-      const qrImg = document.getElementById("qrImg");
-      const copyPix = document.getElementById("copyPix");
-      qrWrap.style.display = "flex";
-      qrImg.src = `data:image/png;base64,${data.qr_code_base64}`;
-      copyPix.onclick = () => navigator.clipboard.writeText(data.qr_code);
-      monitorarPagamento(data.orderId, data.id);
-    } else {
-      alert("Erro ao gerar QR Code PIX.");
-    }
-  } catch {
-    alert("Erro ao iniciar o pagamento PIX.");
-  } finally {
-    btnPix.innerHTML = "🟢 Pagar com PIX (R$ 3,99)";
-    btnPix.disabled = false;
-  }
+    const data=await res.json();
+    if(data.qr_code_base64){
+      const qrWrap=document.getElementById("qrWrap");
+      const qrImg=document.getElementById("qrImg");
+      const copyPix=document.getElementById("copyPix");
+      qrWrap.style.display="flex";
+      qrImg.src=`data:image/png;base64,${data.qr_code_base64}`;
+      copyPix.onclick=()=>navigator.clipboard.writeText(data.qr_code);
+      monitorarPagamento(data.orderId,data.id);
+    } else alert("Erro ao gerar QR Code PIX.");
+  } catch { alert("Erro ao iniciar PIX."); }
+  btnPix.innerHTML="🟢 Pagar com PIX (R$ 3,99)";
+  btnPix.disabled=false;
 }
 
 async function iniciarCartao() {
-  const btnCard = document.getElementById("btnCard");
-  btnCard.innerHTML = `<span class='spinner'></span>CARREGANDO CARTÃO...`;
-  btnCard.disabled = true;
-
+  const btnCard=document.getElementById("btnCard");
+  btnCard.innerHTML="<span class='spinner'></span>CARREGANDO CARTÃO...";
+  btnCard.disabled=true;
   try {
-    const res = await fetch(`${BACKEND_URL}/create-order`, { method: "POST" });
-    const data = await res.json();
-    if (data.init_point) {
-      window.open(data.init_point, "_blank");
-      monitorarPagamento(data.orderId, data.id);
-    } else {
-      alert("Erro ao criar pagamento com cartão/boleto.");
-    }
-  } catch {
-    alert("Erro ao iniciar o pagamento com cartão.");
-  } finally {
-    btnCard.innerHTML = "💳 Pagar com Cartão/Boleto (R$ 4,99)";
-    btnCard.disabled = false;
-  }
+    const res=await fetch(`${BACKEND_URL}/create-order`,{method:"POST"});
+    const data=await res.json();
+    if(data.init_point){
+      window.open(data.init_point,"_blank");
+      monitorarPagamento(data.orderId,data.id);
+    } else alert("Erro ao criar pedido.");
+  } catch { alert("Erro ao iniciar pagamento."); }
+  btnCard.innerHTML="💳 Pagar com Cartão/Boleto (R$ 4,99)";
+  btnCard.disabled=false;
 }
 
-document.getElementById("btnPix").onclick = iniciarPix;
-document.getElementById("btnCard").onclick = iniciarCartao;
+document.getElementById("btnPix").onclick=iniciarPix;
+document.getElementById("btnCard").onclick=iniciarCartao;
 
 let sec=600;
 window._tick=setInterval(()=>{
