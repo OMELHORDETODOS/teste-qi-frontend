@@ -9,6 +9,43 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    /* Spinner dourado elegante */
+    .spinner {
+      border: 3px solid rgba(255, 215, 0, 0.2);
+      border-top: 3px solid gold;
+      border-radius: 50%;
+      width: 18px;
+      height: 18px;
+      animation: spin 0.8s linear infinite;
+      display: inline-block;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    button:disabled { opacity: 0.6; cursor: not-allowed; transition: opacity 0.3s; }
+
+    #pixStatus.active { color: gold; font-weight: 600; animation: pulse 1s infinite alternate; }
+    @keyframes pulse { from { opacity: 0.6; } to { opacity: 1; } }
+
+    /* Animação de pagamento aprovado */
+    #paymentSuccess {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+      z-index: 999; justify-content: center; align-items: center; flex-direction: column;
+      color: gold; font-family: "Poppins", sans-serif; animation: fadeIn 0.5s ease;
+    }
+    #paymentSuccess .card {
+      background: linear-gradient(145deg, #1a1a1a, #111);
+      border: 2px solid gold; border-radius: 16px; padding: 40px 60px; text-align: center;
+      box-shadow: 0 0 25px rgba(255,215,0,0.3); animation: popIn 0.6s ease;
+    }
+    #paymentSuccess h2 { font-size: 28px; margin-top: 15px; font-weight: 700; color: gold; }
+    #paymentSuccess p { color: #ddd; margin-top: 5px; font-size: 16px; }
+    @keyframes fadeIn { from {opacity: 0;} to {opacity: 1;} }
+    @keyframes popIn { 0% { transform: scale(0.7); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+  </style>
 </head>
 
 <body class="home-bg">
@@ -53,6 +90,15 @@
     </div>
   </div>
 
+  <!-- Tela de pagamento aprovado -->
+  <div id="paymentSuccess">
+    <div class="card">
+      <div style="font-size: 60px;">✅</div>
+      <h2>Pagamento Aprovado!</h2>
+      <p>Seu resultado será exibido em instantes...</p>
+    </div>
+  </div>
+
   <!-- Tela de resultado -->
   <div class="result-overlay" id="overlay">
     <div class="card result-card">
@@ -64,7 +110,7 @@
 <script>
 const BACKEND_URL = "https://teste-qi-backend-om69.onrender.com";
 
-// ================== PERGUNTAS (42) ==================
+/* ================== PERGUNTAS (42) ================== */
 const QUESTIONS = [
   {q:"Se 2 + 2 = ?",a:["3","4","5","6"],c:1},
   {q:"Qual número completa a sequência: 2,4,8,16,...",a:["18","20","24","32"],c:3},
@@ -110,7 +156,7 @@ const QUESTIONS = [
   {q:"Qual a metade de 1,5?",a:["0,5","0,6","0,75","1"],c:2}
 ];
 
-// ================== LÓGICA ==================
+/* ================== LÓGICA DO TESTE ================== */
 let current=0,correct=0;
 const qtext=document.getElementById('qtext');
 const opts=document.getElementById('opts');
@@ -160,68 +206,108 @@ function finish(){
   localStorage.setItem('qi_est',correct);
 }
 
-// ================== PAGAMENTO ==================
+/* ================== PAGAMENTO ================== */
 async function liberarResultado(orderId) {
-  const res = await fetch(`${BACKEND_URL}/result/${orderId}`);
-  const data = await res.json();
-  if (res.ok) {
-    overlay.style.display = "flex";
-    iqNum.textContent = data.result.score;
-  } else {
-    alert("Pagamento pendente. Aguarde a aprovação.");
-  }
+  document.getElementById("paymentSuccess").style.display = "flex";
+  setTimeout(async () => {
+    const res = await fetch(`${BACKEND_URL}/result/${orderId}`);
+    const data = await res.json();
+    document.getElementById("paymentSuccess").style.display = "none";
+    if (res.ok) {
+      overlay.style.display = "flex";
+      iqNum.textContent = data.result.score;
+    } else {
+      alert("Pagamento pendente. Aguarde a aprovação.");
+    }
+  }, 1800);
 }
 
 async function iniciarPix() {
-  const res = await fetch(`${BACKEND_URL}/create-pix`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      amount: 3.99,
-      description: "Resultado Teste de QI Premium",
-      correct,
-      total: QUESTIONS.length
-    })
-  });
-  const data = await res.json();
+  const btnPix = document.getElementById("btnPix");
+  const oldText = btnPix.innerHTML;
+  btnPix.innerHTML = `<span class="spinner"></span>Gerando PIX...`;
+  btnPix.disabled = true;
 
-  if (data.qr_code_base64) {
-    const qrWrap = document.getElementById("qrWrap");
-    const qrImg = document.getElementById("qrImg");
-    const copyPix = document.getElementById("copyPix");
-    qrWrap.style.display = "flex";
-    qrImg.src = `data:image/png;base64,${data.qr_code_base64}`;
-    copyPix.onclick = () => navigator.clipboard.writeText(data.qr_code);
+  try {
+    const res = await fetch(`${BACKEND_URL}/create-pix`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ amount: 3.99, description: "Resultado Teste de QI Premium", correct, total: QUESTIONS.length })
+    });
+    const data = await res.json();
 
-    const check = setInterval(async () => {
-      const s = await fetch(`${BACKEND_URL}/payment-status/${data.id}`).then(r => r.json());
-      if (s.status === "approved") {
-        clearInterval(check);
-        liberarResultado(data.orderId);
-      }
-    }, 5000);
+    if (data.qr_code_base64) {
+      const qrWrap = document.getElementById("qrWrap");
+      const qrImg = document.getElementById("qrImg");
+      const copyPix = document.getElementById("copyPix");
+      const pixStatus = document.getElementById("pixStatus");
+
+      qrWrap.style.display = "flex";
+      qrImg.src = `data:image/png;base64,${data.qr_code_base64}`;
+      copyPix.onclick = () => {
+        navigator.clipboard.writeText(data.qr_code);
+        alert("✅ Código PIX copiado!");
+      };
+
+      pixStatus.textContent = "⏳ Verificando pagamento...";
+      pixStatus.classList.add("active");
+
+      const check = setInterval(async () => {
+        const s = await fetch(`${BACKEND_URL}/payment-status/${data.id}`).then(r => r.json());
+        if (s.status === "approved") {
+          clearInterval(check);
+          pixStatus.textContent = "✅ Pagamento aprovado!";
+          pixStatus.classList.remove("active");
+          setTimeout(() => liberarResultado(data.orderId), 1500);
+        }
+      }, 5000);
+    } else {
+      alert("❌ Erro ao gerar QR Code PIX. Tente novamente.");
+    }
+  } catch (err) {
+    alert("🚫 Erro ao conectar com o servidor de pagamento!");
+    console.error(err);
+  } finally {
+    btnPix.innerHTML = oldText;
+    btnPix.disabled = false;
   }
 }
 
 async function iniciarCartao() {
-  const res = await fetch(`${BACKEND_URL}/create-order`, { method: "POST" });
-  const data = await res.json();
-  if (data.init_point) {
-    window.open(data.init_point, "_blank");
-    const check = setInterval(async () => {
-      const s = await fetch(`${BACKEND_URL}/payment-status/${data.orderId}`).then(r => r.json());
-      if (s.status === "approved") {
-        clearInterval(check);
-        liberarResultado(data.orderId);
-      }
-    }, 5000);
+  const btnCard = document.getElementById("btnCard");
+  const oldText = btnCard.innerHTML;
+  btnCard.innerHTML = `<span class="spinner"></span>Gerando Pagamento...`;
+  btnCard.disabled = true;
+
+  try {
+    const res = await fetch(`${BACKEND_URL}/create-order`, { method: "POST" });
+    const data = await res.json();
+
+    if (data.init_point) {
+      window.open(data.init_point, "_blank");
+      const check = setInterval(async () => {
+        const s = await fetch(`${BACKEND_URL}/payment-status/${data.orderId}`).then(r => r.json());
+        if (s.status === "approved") {
+          clearInterval(check);
+          liberarResultado(data.orderId);
+        }
+      }, 5000);
+    } else {
+      alert("❌ Erro ao gerar pagamento com cartão/boleto.");
+    }
+  } catch (err) {
+    alert("🚫 Erro ao conectar com o servidor de pagamento!");
+    console.error(err);
+  } finally {
+    btnCard.innerHTML = oldText;
+    btnCard.disabled = false;
   }
 }
 
 document.getElementById("btnPix").onclick = iniciarPix;
 document.getElementById("btnCard").onclick = iniciarCartao;
 
-// TIMER
+/* ================== TIMER ================== */
 let sec=600;
 window._tick=setInterval(()=>{
   sec--;
