@@ -11,7 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
 
   <style>
-    /* Spinner dourado elegante */
+    /* Spinner dourado */
     .spinner {
       border: 3px solid rgba(255, 215, 0, 0.2);
       border-top: 3px solid gold;
@@ -30,7 +30,7 @@
     #pixStatus.active { color: gold; font-weight: 600; animation: pulse 1s infinite alternate; }
     @keyframes pulse { from { opacity: 0.6; } to { opacity: 1; } }
 
-    /* Animação de pagamento aprovado */
+    /* Tela de pagamento aprovado */
     #paymentSuccess {
       display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85);
       z-index: 999; justify-content: center; align-items: center; flex-direction: column;
@@ -73,7 +73,7 @@
       </audio>
     </div>
 
-    <!-- Paywall / Pagamento -->
+    <!-- Paywall -->
     <div class="card paywall" id="paywall" style="display:none">
       <div class="result-title">🎉 PARABÉNS! VOCÊ ESTÁ ACIMA DA MÉDIA!</div>
       <p class="pay-info">Libere seu resultado completo escolhendo a forma de pagamento:</p>
@@ -110,7 +110,7 @@
 <script>
 const BACKEND_URL = "https://teste-qi-backend-om69.onrender.com";
 
-/* ================== PERGUNTAS (42) ================== */
+/* ================== PERGUNTAS ================== */
 const QUESTIONS = [
   {q:"Se 2 + 2 = ?",a:["3","4","5","6"],c:1},
   {q:"Qual número completa a sequência: 2,4,8,16,...",a:["18","20","24","32"],c:3},
@@ -210,14 +210,21 @@ function finish(){
 async function liberarResultado(orderId) {
   document.getElementById("paymentSuccess").style.display = "flex";
   setTimeout(async () => {
-    const res = await fetch(`${BACKEND_URL}/result/${orderId}`);
-    const data = await res.json();
-    document.getElementById("paymentSuccess").style.display = "none";
-    if (res.ok) {
+    try {
+      const res = await fetch(`${BACKEND_URL}/result/${orderId}`);
+      if (!res.ok) throw new Error("Erro no backend");
+      const data = await res.json();
+
+      document.getElementById("paymentSuccess").style.display = "none";
       overlay.style.display = "flex";
-      iqNum.textContent = data.result.score;
-    } else {
-      alert("Pagamento pendente. Aguarde a aprovação.");
+      iqNum.textContent = data.result?.score || localStorage.getItem("qi_est") || "—";
+    } catch (e) {
+      console.warn("⚠️ Erro ao buscar resultado:", e);
+      document.getElementById("paymentSuccess").style.display = "none";
+      overlay.style.display = "flex";
+
+      const localScore = localStorage.getItem("qi_est");
+      iqNum.textContent = localScore ? Math.round(100 + 15*((localScore - QUESTIONS.length/2)/(QUESTIONS.length*0.18))) : "—";
     }
   }, 1800);
 }
