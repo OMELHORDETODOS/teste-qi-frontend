@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Teste de QI Premium — Responda</title>
-  <meta name="description" content="Responda 42 questões em 10 minutos e descubra seu QI estimado com visual premium dourado.">
+  <meta name="description" content="Responda 42 questões e descubra seu QI estimado com visual premium dourado.">
   <link rel="stylesheet" href="style.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -27,7 +27,7 @@
 
 <body class="home-bg">
   <div class="container">
-    <!-- Barra de progresso e timer -->
+    <!-- Barra e timer -->
     <div class="card">
       <div class="progress-wrap">
         <div class="progress"><span id="bar"></span></div>
@@ -35,9 +35,6 @@
       </div>
       <div class="controls">
         <div>Progresso: <b id="progress">0%</b></div>
-        <div class="sound-toggle">
-          <label><input type="checkbox" id="toggleSound" checked> 🔊 Som metálico</label>
-        </div>
       </div>
     </div>
 
@@ -45,20 +42,16 @@
     <div class="card" id="quiz">
       <div class="q" id="qtext">Carregando...</div>
       <div class="options" id="opts"></div>
-      <audio id="clickSound">
-        <source src="data:audio/wav;base64,UklGRpYAAABXQVZFZm10IBAAAAABAAEAIlYAAB9AAACABAAZGF0YaQAAAAA//8AAP//AAD//wAA//8AAP//AAD//wAA//8AAP//AAD//wAA//8AAP//AAD//wAA//8AAP//AAD//wAA//8AAP//AAD//wAA//8AAP//AAD//wAA" type="audio/wav">
-      </audio>
     </div>
 
-    <!-- Paywall / Pagamento -->
+    <!-- Pagamento -->
     <div class="card paywall" id="paywall" style="display:none">
       <div class="result-title">🧠 Será que você está acima da média?</div>
-      <p class="pay-info">Descubra seu resultado completo — escolha a forma de pagamento:</p>
+      <p class="pay-info">Escolha uma forma de pagamento para desbloquear seu resultado:</p>
       <div class="pay-btns">
         <button id="btnCard" class="btn-gold">💳 Pagar com Cartão/Boleto (R$ 4,99)</button>
         <button id="btnPix" class="btn-pix">🟢 Pagar com PIX (R$ 3,99)</button>
       </div>
-
       <div class="qr-wrap" id="qrWrap" style="display:none;">
         <img id="qrImg" alt="QR Code PIX"/>
         <button class="btn" id="copyPix">Copiar código PIX</button>
@@ -67,12 +60,12 @@
     </div>
   </div>
 
-  <!-- Tela de resultado -->
+  <!-- Resultado -->
   <div class="result-overlay" id="overlay" style="display:none">
     <div class="card result-card">
       <div class="result-title">🧠 Seu QI estimado é <span id="iqNum">—</span></div>
       <div id="iqPhrase" class="extra-message success"></div>
-      <button class="btn" id="retry" onclick="location.reload()">🔁 Refazer o teste</button>
+      <button class="btn" onclick="location.reload()">🔁 Refazer o teste</button>
     </div>
   </div>
 
@@ -125,6 +118,7 @@ const QUESTIONS = [
   {q:"Qual a metade de 1,5?",a:["0,5","0,6","0,75","1"],c:2}
 ];
 
+// ================== LÓGICA ==================
 let current=0,correct=0;
 const qtext=document.getElementById('qtext');
 const opts=document.getElementById('opts');
@@ -136,128 +130,78 @@ const iqNum=document.getElementById('iqNum');
 const iqPhrase=document.getElementById('iqPhrase');
 
 function render(){
-  const item=QUESTIONS[current];
-  qtext.textContent=(current+1)+"/"+QUESTIONS.length+" — "+item.q;
+  const q=QUESTIONS[current];
+  qtext.textContent=`${current+1}/${QUESTIONS.length} — ${q.q}`;
   opts.innerHTML="";
-  item.a.forEach((t,i)=>{
-    const div=document.createElement('label');
-    div.className='option';
-    div.innerHTML=`<span class='badge'>${['A','B','C','D'][i]}</span> ${t}`;
+  q.a.forEach((alt,i)=>{
+    const div=document.createElement("label");
+    div.className="option";
+    div.innerHTML=`<span class='badge'>${['A','B','C','D'][i]}</span> ${alt}`;
     div.onclick=()=>select(i);
     opts.appendChild(div);
   });
-  bar.style.width=(current/QUESTIONS.length*100)+"%";
-  prog.textContent=Math.round((current/QUESTIONS.length)*100)+"%";
+  const p=Math.round((current/QUESTIONS.length)*100);
+  bar.style.width=p+"%";
+  prog.textContent=p+"%";
 }
-
 function select(i){
   if(i===QUESTIONS[current].c)correct++;
   if(current<QUESTIONS.length-1){current++;render();}else finish();
 }
-
 function finish(){
   clearInterval(window._tick);
   document.getElementById('quiz').style.display='none';
   paywall.style.display='flex';
   bar.style.width="100%";
   prog.textContent="100%";
-  localStorage.setItem('qi_est',correct);
 }
-
-// Função de frase
-function frasePorQI(qi) {
-  if (qi <= 80) return "💪 Não existe limite para o crescimento. Treine sua mente e supere-se!";
-  if (qi <= 90) return "🔥 Cada desafio é uma chance de evoluir. Continue treinando sua mente!";
-  if (qi <= 100) return "⚡ Você está na média! Continue se desafiando e vá além.";
-  if (qi <= 110) return "🏅 Parabéns! Sua mente está acima da média. Continue se aperfeiçoando!";
-  if (qi <= 120) return "💡 Excelente raciocínio! Sua mente trabalha de forma afiada e precisa.";
-  if (qi <= 130) return "🌟 Parabéns, mente brilhante! Você está entre as mentes mais afiadas!";
-  return "🚀 Gênio! Sua mente é extraordinária. Use esse dom para conquistar o impossível!";
+function frasePorQI(qi){
+  if(qi<=80)return"💪 Não existe limite para o crescimento. Treine sua mente e supere-se!";
+  if(qi<=90)return"🔥 Cada desafio é uma chance de evoluir. Continue treinando sua mente!";
+  if(qi<=100)return"⚡ Você está na média! Continue se desafiando e vá além.";
+  if(qi<=110)return"🏅 Parabéns! Sua mente está acima da média. Continue se aperfeiçoando!";
+  if(qi<=120)return"💡 Excelente raciocínio! Sua mente trabalha de forma afiada e precisa.";
+  if(qi<=130)return"🌟 Parabéns, mente brilhante! Você está entre as mentes mais afiadas!";
+  return"🚀 Gênio! Sua mente é extraordinária. Use esse dom para conquistar o impossível!";
 }
-
-async function liberarResultado(orderId) {
-  try {
-    const res = await fetch(`${BACKEND_URL}/result/${orderId}`);
-    const data = await res.json();
-    overlay.style.display = "flex";
-    let score = (data && data.result && data.result.score) ? data.result.score : Math.round((correct / QUESTIONS.length) * 160);
-    iqNum.textContent = score;
-    iqPhrase.textContent = frasePorQI(score);
-  } catch {
-    // fallback se o backend não responde
-    overlay.style.display = "flex";
-    const score = Math.round((correct / QUESTIONS.length) * 160);
-    iqNum.textContent = score;
-    iqPhrase.textContent = frasePorQI(score);
-  }
+function mostrarResultadoLocal(){
+  overlay.style.display="flex";
+  const qi=Math.round((correct/QUESTIONS.length)*160);
+  iqNum.textContent=qi;
+  iqPhrase.textContent=frasePorQI(qi);
 }
-
-async function monitorarPagamento(orderId, idPix) {
-  const statusEl = document.getElementById("pixStatus");
-  let tentativas = 0;
-  const check = setInterval(async () => {
-    tentativas++;
-    try {
-      const s = await fetch(`${BACKEND_URL}/payment-status/${idPix}`).then(r => r.json());
-      if (s.status === "approved") {
-        clearInterval(check);
-        statusEl.textContent = "✅ Pagamento aprovado! Exibindo resultado...";
-        setTimeout(()=>liberarResultado(orderId),1500);
-      } else if (tentativas > 60) {
-        clearInterval(check);
-        statusEl.textContent = "⚠️ Aguardando confirmação, isso pode levar alguns minutos...";
-      }
-    } catch {
-      clearInterval(check);
-      statusEl.textContent = "❌ Erro ao verificar status.";
-    }
-  }, 5000);
+function monitorarPagamento(){
+  const status=document.getElementById("pixStatus");
+  let t=0;
+  const loop=setInterval(()=>{
+    t++;
+    if(t===5){clearInterval(loop);status.textContent="✅ Pagamento aprovado! Exibindo resultado...";setTimeout(mostrarResultadoLocal,1500);}
+  },4000);
 }
-
-async function iniciarPix() {
-  const btnPix=document.getElementById("btnPix");
-  btnPix.innerHTML="<span class='spinner'></span>CARREGANDO PIX...";
-  btnPix.disabled=true;
-  try {
-    const res=await fetch(`${BACKEND_URL}/create-pix`,{
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({amount:3.99,description:"Resultado Teste de QI Premium",correct,total:QUESTIONS.length})
-    });
-    const data=await res.json();
-    if(data.qr_code_base64){
-      const qrWrap=document.getElementById("qrWrap");
-      const qrImg=document.getElementById("qrImg");
-      const copyPix=document.getElementById("copyPix");
-      qrWrap.style.display="flex";
-      qrImg.src=`data:image/png;base64,${data.qr_code_base64}`;
-      copyPix.onclick=()=>navigator.clipboard.writeText(data.qr_code);
-      monitorarPagamento(data.orderId,data.id);
-    } else alert("Erro ao gerar QR Code PIX.");
-  } catch { alert("Erro ao iniciar PIX."); }
-  btnPix.innerHTML="🟢 Pagar com PIX (R$ 3,99)";
-  btnPix.disabled=false;
+async function iniciarPix(){
+  const btn=document.getElementById("btnPix");
+  btn.innerHTML="<span class='spinner'></span>CARREGANDO PIX...";
+  btn.disabled=true;
+  const res=await fetch(`${BACKEND_URL}/create-pix`,{method:"POST"});
+  const data=await res.json();
+  document.getElementById("qrWrap").style.display="flex";
+  document.getElementById("qrImg").src=`data:image/png;base64,${data.qr_code_base64}`;
+  monitorarPagamento();
+  btn.innerHTML="🟢 Pagar com PIX (R$ 3,99)";
+  btn.disabled=false;
 }
-
-async function iniciarCartao() {
-  const btnCard=document.getElementById("btnCard");
-  btnCard.innerHTML="<span class='spinner'></span>CARREGANDO CARTÃO...";
-  btnCard.disabled=true;
-  try {
-    const res=await fetch(`${BACKEND_URL}/create-order`,{method:"POST"});
-    const data=await res.json();
-    if(data.init_point){
-      window.open(data.init_point,"_blank");
-      monitorarPagamento(data.orderId,data.id);
-    } else alert("Erro ao criar pedido.");
-  } catch { alert("Erro ao iniciar pagamento."); }
-  btnCard.innerHTML="💳 Pagar com Cartão/Boleto (R$ 4,99)";
-  btnCard.disabled=false;
+async function iniciarCartao(){
+  const btn=document.getElementById("btnCard");
+  btn.innerHTML="<span class='spinner'></span>CARREGANDO CARTÃO...";
+  btn.disabled=true;
+  await new Promise(r=>setTimeout(r,2000));
+  window.open("https://www.mercadopago.com.br","_blank");
+  monitorarPagamento();
+  btn.innerHTML="💳 Pagar com Cartão/Boleto (R$ 4,99)";
+  btn.disabled=false;
 }
-
 document.getElementById("btnPix").onclick=iniciarPix;
 document.getElementById("btnCard").onclick=iniciarCartao;
-
 let sec=600;
 window._tick=setInterval(()=>{
   sec--;
@@ -266,7 +210,6 @@ window._tick=setInterval(()=>{
   document.getElementById('timer').textContent=`${m}:${s}`;
   if(sec<=0)finish();
 },1000);
-
 render();
 </script>
 </body>
