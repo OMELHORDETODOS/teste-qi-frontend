@@ -4,20 +4,20 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Teste de QI Premium — Responda</title>
-  <meta name="description" content="Responda 42 questões e descubra seu QI estimado com visual premium dourado.">
+  <meta name="description" content="Responda 42 questões em 10 minutos e descubra seu QI estimado com visual premium dourado.">
   <link rel="stylesheet" href="style.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
   <style>
     .spinner {
-      display: inline-block;
-      width: 16px;
-      height: 16px;
       border: 3px solid rgba(255,255,255,0.3);
       border-top: 3px solid gold;
       border-radius: 50%;
+      width: 16px;
+      height: 16px;
       animation: spin 1s linear infinite;
+      display: inline-block;
       margin-right: 8px;
       vertical-align: middle;
     }
@@ -71,7 +71,7 @@
   <div class="result-overlay" id="overlay" style="display:none">
     <div class="card result-card">
       <div class="result-title">🧠 Seu QI estimado é <span id="iqNum">—</span></div>
-      <div id="iqPhrase" class="extra-message success"></div>
+      <div class="extra-message success" id="iqPhrase"></div>
       <button class="btn" onclick="window.location.reload()">🔁 Refazer o teste</button>
     </div>
   </div>
@@ -79,7 +79,18 @@
 <script>
 const BACKEND_URL = "https://teste-qi-backend-om69.onrender.com";
 
-// ================== PERGUNTAS ==================
+// 🕐 Acordar o servidor automaticamente
+(async () => {
+  try {
+    const res = await fetch(`${BACKEND_URL}/`);
+    const data = await res.json();
+    console.log("Servidor pronto:", data.status);
+  } catch {
+    console.warn("Servidor ainda dormindo...");
+  }
+})();
+
+// ================== PERGUNTAS (42) ==================
 const QUESTIONS = [
   {q:"Se 2 + 2 = ?",a:["3","4","5","6"],c:1},
   {q:"Qual número completa a sequência: 2,4,8,16,...",a:["18","20","24","32"],c:3},
@@ -125,6 +136,7 @@ const QUESTIONS = [
   {q:"Qual a metade de 1,5?",a:["0,5","0,6","0,75","1"],c:2}
 ];
 
+// ================== LÓGICA ==================
 let current=0,correct=0;
 const qtext=document.getElementById('qtext');
 const opts=document.getElementById('opts');
@@ -133,9 +145,12 @@ const prog=document.getElementById('progress');
 const paywall=document.getElementById('paywall');
 const overlay=document.getElementById('overlay');
 const iqNum=document.getElementById('iqNum');
+const iqPhrase=document.getElementById('iqPhrase');
 const clickSound=document.getElementById('clickSound');
+let allowSound=true;
 
-function metallicClick(){try{clickSound.currentTime=0;clickSound.play();}catch(e){}}
+document.getElementById('toggleSound').addEventListener('change',e=>allowSound=e.target.checked);
+function metallicClick(){ if(allowSound){ try{ clickSound.currentTime=0; clickSound.play(); }catch(e){} } }
 
 function render(){
   const item=QUESTIONS[current];
@@ -169,15 +184,36 @@ function finish(){
   paywall.style.display='flex';
   bar.style.width="100%";
   prog.textContent="100%";
+  localStorage.setItem('qi_est',correct);
 }
 
-// PAGAMENTO
+// ================== PAGAMENTO ==================
+async function liberarResultado(orderId){
+  const res=await fetch(`${BACKEND_URL}/result/${orderId}`);
+  const data=await res.json();
+  if(res.ok){
+    overlay.style.display="flex";
+    iqNum.textContent=data.result.score;
+    const iq=data.result.score;
+    if(iq<=80)iqPhrase.textContent="Não existe limite para o crescimento. Treine sua mente e supere-se!";
+    else if(iq<=90)iqPhrase.textContent="Cada desafio é uma chance de evoluir. Continue treinando sua mente!";
+    else if(iq<=100)iqPhrase.textContent="Você está na média! Continue se desafiando e vá além.";
+    else if(iq<=110)iqPhrase.textContent="Parabéns! Sua mente está acima da média. Continue se aperfeiçoando!";
+    else if(iq<=120)iqPhrase.textContent="Excelente raciocínio! Sua mente trabalha de forma afiada e precisa.";
+    else if(iq<=130)iqPhrase.textContent="Parabéns, mente brilhante! Você está entre as mentes mais afiadas!";
+    else iqPhrase.textContent="Gênio! Sua mente é extraordinária. Use esse dom para conquistar o impossível.";
+  } else {
+    document.getElementById("pixStatus").textContent="Pagamento pendente. Aguarde a aprovação.";
+  }
+}
+
 async function iniciarPix(){
   const btn=document.getElementById("btnPix");
   btn.disabled=true;
   const original=btn.innerHTML;
-  btn.innerHTML='<span class="spinner"></span>Gerando cobrança PIX...';
+  btn.innerHTML='<span class="spinner"></span>Carregando PIX...';
   try{
+    await fetch(`${BACKEND_URL}/`).catch(()=>{});
     const res=await fetch(`${BACKEND_URL}/create-pix`,{
       method:"POST",
       headers:{"Content-Type":"application/json"},
@@ -203,6 +239,7 @@ async function iniciarCartao(){
   const original=btn.innerHTML;
   btn.innerHTML='<span class="spinner"></span>Gerando link de pagamento...';
   try{
+    await fetch(`${BACKEND_URL}/`).catch(()=>{});
     const res=await fetch(`${BACKEND_URL}/create-order`,{method:"POST"});
     const data=await res.json();
     if(data.init_point){
@@ -214,17 +251,6 @@ async function iniciarCartao(){
     }else alert("Erro ao criar pagamento.");
   }catch(err){alert("Erro de conexão!");console.error(err);}
   finally{btn.disabled=false;btn.innerHTML=original;}
-}
-
-async function liberarResultado(orderId){
-  const res=await fetch(`${BACKEND_URL}/result/${orderId}`);
-  const data=await res.json();
-  if(res.ok){
-    overlay.style.display="flex";
-    iqNum.textContent=data.result.score;
-  }else{
-    document.getElementById("pixStatus").textContent="Pagamento pendente. Aguarde a aprovação.";
-  }
 }
 
 document.getElementById("btnPix").onclick=iniciarPix;
