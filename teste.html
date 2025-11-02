@@ -4,11 +4,25 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Teste de QI Premium — Responda</title>
-  <meta name="description" content="Responda 42 questões em 10 minutos e descubra seu QI estimado com visual premium dourado.">
+  <meta name="description" content="Responda 42 questões e descubra seu QI estimado com visual premium dourado.">
   <link rel="stylesheet" href="style.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 3px solid rgba(255,255,255,0.3);
+      border-top: 3px solid gold;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+    @keyframes spin { 100% { transform: rotate(360deg); } }
+  </style>
 </head>
 
 <body class="home-bg">
@@ -38,14 +52,14 @@
 
     <!-- Paywall / Pagamento -->
     <div class="card paywall" id="paywall" style="display:none">
-      <div class="result-title">🎉 PARABÉNS! VOCÊ ESTÁ ACIMA DA MÉDIA!</div>
-      <p class="pay-info">Libere seu resultado completo escolhendo a forma de pagamento:</p>
+      <div class="result-title">🧠 Será que você está acima da média?</div>
+      <p class="pay-info">Descubra seu resultado completo — escolha a forma de pagamento:</p>
       <div class="pay-btns">
         <button id="btnCard" class="btn-gold">💳 Pagar com Cartão/Boleto (R$ 4,99)</button>
         <button id="btnPix" class="btn-pix">🟢 Pagar com PIX (R$ 3,99)</button>
       </div>
 
-      <div class="qr-wrap" id="qrWrap">
+      <div class="qr-wrap" id="qrWrap" style="display:none;">
         <img id="qrImg" alt="QR Code PIX"/>
         <button class="btn" id="copyPix">Copiar código PIX</button>
         <div class="chip" id="pixStatus">Aguardando pagamento PIX...</div>
@@ -54,17 +68,18 @@
   </div>
 
   <!-- Tela de resultado -->
-  <div class="result-overlay" id="overlay">
+  <div class="result-overlay" id="overlay" style="display:none">
     <div class="card result-card">
       <div class="result-title">🧠 Seu QI estimado é <span id="iqNum">—</span></div>
-      <div class="extra-message success">✨ Parabéns, mente brilhante!</div>
+      <div id="iqPhrase" class="extra-message success"></div>
+      <button class="btn" onclick="window.location.reload()">🔁 Refazer o teste</button>
     </div>
   </div>
 
 <script>
 const BACKEND_URL = "https://teste-qi-backend-om69.onrender.com";
 
-// ================== PERGUNTAS (42) ==================
+// ================== PERGUNTAS ==================
 const QUESTIONS = [
   {q:"Se 2 + 2 = ?",a:["3","4","5","6"],c:1},
   {q:"Qual número completa a sequência: 2,4,8,16,...",a:["18","20","24","32"],c:3},
@@ -110,7 +125,6 @@ const QUESTIONS = [
   {q:"Qual a metade de 1,5?",a:["0,5","0,6","0,75","1"],c:2}
 ];
 
-// ================== LÓGICA ==================
 let current=0,correct=0;
 const qtext=document.getElementById('qtext');
 const opts=document.getElementById('opts');
@@ -120,10 +134,8 @@ const paywall=document.getElementById('paywall');
 const overlay=document.getElementById('overlay');
 const iqNum=document.getElementById('iqNum');
 const clickSound=document.getElementById('clickSound');
-let allowSound=true;
 
-document.getElementById('toggleSound').addEventListener('change',e=>allowSound=e.target.checked);
-function metallicClick(){ if(allowSound){ try{ clickSound.currentTime=0; clickSound.play(); }catch(e){} } }
+function metallicClick(){try{clickSound.currentTime=0;clickSound.play();}catch(e){}}
 
 function render(){
   const item=QUESTIONS[current];
@@ -157,69 +169,66 @@ function finish(){
   paywall.style.display='flex';
   bar.style.width="100%";
   prog.textContent="100%";
-  localStorage.setItem('qi_est',correct);
 }
 
-// ================== PAGAMENTO ==================
-async function liberarResultado(orderId) {
-  const res = await fetch(`${BACKEND_URL}/result/${orderId}`);
-  const data = await res.json();
-  if (res.ok) {
-    overlay.style.display = "flex";
-    iqNum.textContent = data.result.score;
-  } else {
-    alert("Pagamento pendente. Aguarde a aprovação.");
+// PAGAMENTO
+async function iniciarPix(){
+  const btn=document.getElementById("btnPix");
+  btn.disabled=true;
+  const original=btn.innerHTML;
+  btn.innerHTML='<span class="spinner"></span>Gerando cobrança PIX...';
+  try{
+    const res=await fetch(`${BACKEND_URL}/create-pix`,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({amount:3.99,description:"Resultado Teste de QI Premium",correct,total:QUESTIONS.length})
+    });
+    const data=await res.json();
+    if(data.qr_code_base64){
+      document.getElementById("qrWrap").style.display="flex";
+      document.getElementById("qrImg").src=`data:image/png;base64,${data.qr_code_base64}`;
+      document.getElementById("copyPix").onclick=()=>navigator.clipboard.writeText(data.qr_code);
+      const check=setInterval(async()=>{
+        const s=await fetch(`${BACKEND_URL}/payment-status/${data.id}`).then(r=>r.json());
+        if(s.status==="approved"){clearInterval(check);liberarResultado(data.orderId);}
+      },5000);
+    }else alert("Erro ao gerar PIX");
+  }catch(err){alert("Erro ao conectar com servidor!");console.error(err);}
+  finally{btn.disabled=false;btn.innerHTML=original;}
+}
+
+async function iniciarCartao(){
+  const btn=document.getElementById("btnCard");
+  btn.disabled=true;
+  const original=btn.innerHTML;
+  btn.innerHTML='<span class="spinner"></span>Gerando link de pagamento...';
+  try{
+    const res=await fetch(`${BACKEND_URL}/create-order`,{method:"POST"});
+    const data=await res.json();
+    if(data.init_point){
+      window.open(data.init_point,"_blank");
+      const check=setInterval(async()=>{
+        const s=await fetch(`${BACKEND_URL}/payment-status/${data.orderId}`).then(r=>r.json());
+        if(s.status==="approved"){clearInterval(check);liberarResultado(data.orderId);}
+      },5000);
+    }else alert("Erro ao criar pagamento.");
+  }catch(err){alert("Erro de conexão!");console.error(err);}
+  finally{btn.disabled=false;btn.innerHTML=original;}
+}
+
+async function liberarResultado(orderId){
+  const res=await fetch(`${BACKEND_URL}/result/${orderId}`);
+  const data=await res.json();
+  if(res.ok){
+    overlay.style.display="flex";
+    iqNum.textContent=data.result.score;
+  }else{
+    document.getElementById("pixStatus").textContent="Pagamento pendente. Aguarde a aprovação.";
   }
 }
 
-async function iniciarPix() {
-  const res = await fetch(`${BACKEND_URL}/create-pix`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      amount: 3.99,
-      description: "Resultado Teste de QI Premium",
-      correct,
-      total: QUESTIONS.length
-    })
-  });
-  const data = await res.json();
-
-  if (data.qr_code_base64) {
-    const qrWrap = document.getElementById("qrWrap");
-    const qrImg = document.getElementById("qrImg");
-    const copyPix = document.getElementById("copyPix");
-    qrWrap.style.display = "flex";
-    qrImg.src = `data:image/png;base64,${data.qr_code_base64}`;
-    copyPix.onclick = () => navigator.clipboard.writeText(data.qr_code);
-
-    const check = setInterval(async () => {
-      const s = await fetch(`${BACKEND_URL}/payment-status/${data.id}`).then(r => r.json());
-      if (s.status === "approved") {
-        clearInterval(check);
-        liberarResultado(data.orderId);
-      }
-    }, 5000);
-  }
-}
-
-async function iniciarCartao() {
-  const res = await fetch(`${BACKEND_URL}/create-order`, { method: "POST" });
-  const data = await res.json();
-  if (data.init_point) {
-    window.open(data.init_point, "_blank");
-    const check = setInterval(async () => {
-      const s = await fetch(`${BACKEND_URL}/payment-status/${data.orderId}`).then(r => r.json());
-      if (s.status === "approved") {
-        clearInterval(check);
-        liberarResultado(data.orderId);
-      }
-    }, 5000);
-  }
-}
-
-document.getElementById("btnPix").onclick = iniciarPix;
-document.getElementById("btnCard").onclick = iniciarCartao;
+document.getElementById("btnPix").onclick=iniciarPix;
+document.getElementById("btnCard").onclick=iniciarCartao;
 
 // TIMER
 let sec=600;
