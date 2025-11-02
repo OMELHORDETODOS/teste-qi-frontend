@@ -17,12 +17,13 @@
       height: 100vh;
       margin: 0;
       text-align: center;
+      padding: 0 20px;
     }
     .card {
       background: rgba(20,20,20,0.9);
       border: 1px solid gold;
       border-radius: 16px;
-      padding: 40px;
+      padding: 40px 25px;
       max-width: 420px;
       box-shadow: 0 0 25px rgba(255,215,0,0.3);
     }
@@ -31,10 +32,16 @@
       margin-bottom: 10px;
       font-size: 26px;
       text-shadow: 0 0 10px rgba(255,215,0,0.6);
+      animation: glow 1.5s ease-in-out infinite alternate;
+    }
+    @keyframes glow {
+      from { text-shadow: 0 0 8px gold; }
+      to { text-shadow: 0 0 18px #ffdf5b; }
     }
     p {
       color: #ccc;
       font-size: 16px;
+      margin-bottom: 25px;
     }
     .spinner {
       border: 3px solid rgba(255,255,255,0.3);
@@ -46,19 +53,45 @@
       margin: 25px auto;
     }
     @keyframes spin { 100% { transform: rotate(360deg); } }
+
+    button {
+      background: linear-gradient(90deg, gold, #b8860b);
+      color: #000;
+      font-weight: 700;
+      padding: 14px 22px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: all 0.3s ease;
+      width: 100%;
+      max-width: 260px;
+    }
+    button:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 12px rgba(255,215,0,0.6);
+    }
+    .footer {
+      margin-top: 25px;
+      font-size: 13px;
+      color: #777;
+    }
   </style>
 </head>
 <body>
   <div class="card">
     <h1>✅ E-mail recebido!</h1>
-    <p>Você será redirecionado para o teste em instantes...</p>
+    <p>Estamos te redirecionando para o teste...</p>
     <div class="spinner"></div>
+    <button onclick="irAgora()">Ir agora ➜</button>
   </div>
+  <p class="footer">© 2025 Teste de QI — Todos os direitos reservados.</p>
 
   <script>
-    setTimeout(() => {
+    function irAgora() {
       window.location.href = "teste.html";
-    }, 3000);
+    }
+    setTimeout(irAgora, 3000);
   </script>
 </body>
 </html>
