@@ -9,24 +9,86 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      background: radial-gradient(circle at top, #111 0%, #000 100%);
+      color: #fff;
+      font-family: 'Poppins', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      text-align: center;
+    }
+    .glow-title {
+      color: gold;
+      font-size: 2rem;
+      font-weight: 700;
+      text-shadow: 0 0 15px rgba(255,215,0,0.6);
+    }
+    .message {
+      margin-top: 20px;
+      font-size: 1.1rem;
+      line-height: 1.5;
+    }
+    .loading {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(255,215,0,0.3);
+      border-top: 3px solid gold;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+    @keyframes spin { 100% { transform: rotate(360deg); } }
+    footer {
+      position: fixed;
+      bottom: 15px;
+      width: 100%;
+      text-align: center;
+      opacity: 0.7;
+      font-size: 0.85rem;
+    }
+  </style>
 </head>
-<body class="home-bg">
+
+<body>
   <div class="container">
-    <div class="card" style="text-align:center">
-      <h2 class="glow-title">💎 Resultado Premium</h2>
-      <p style="margin-top:12px">
-        O resultado aparecerá automaticamente após a confirmação do pagamento.<br/>
-        Volte para a aba do teste — não é necessário recarregar a página.
-      </p>
-      <div style="margin-top:28px">
-        <img src="img/preview-teste.png" alt="Prévia do teste" 
-             style="max-width:720px;width:100%;border-radius:16px;
-             border:1px solid rgba(255,255,255,.08);box-shadow:0 0 20px rgba(212,175,55,.25)"/>
-      </div>
+    <h2 class="glow-title">💎 Resultado Premium</h2>
+    <div id="statusMsg" class="message">
+      <div class="loading"></div>Verificando status do pagamento...
     </div>
   </div>
-  <footer class="footer" style="margin-top:30px;text-align:center;opacity:.7">
-    <small>© 2025 Teste de QI Premium — Visual preto e dourado.</small>
+
+  <footer>
+    © 2025 Teste de QI Premium — Visual preto e dourado.
   </footer>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const orderId = params.get("orderId");
+    const status = params.get("status");
+    const statusMsg = document.getElementById("statusMsg");
+
+    function setMessage(msg, color = "#fff") {
+      statusMsg.innerHTML = msg;
+      statusMsg.style.color = color;
+    }
+
+    if (status === "approved") {
+      setMessage("✅ Pagamento aprovado! Seu resultado foi liberado na aba anterior.", "gold");
+    } else if (status === "pending") {
+      setMessage("⏳ Pagamento pendente. Assim que for aprovado, o resultado será exibido automaticamente.");
+    } else if (status === "failure") {
+      setMessage("❌ O pagamento falhou. Tente novamente para liberar seu resultado.");
+    } else if (orderId) {
+      setMessage("💳 Pagamento registrado! Assim que for aprovado, seu resultado será liberado automaticamente.");
+    } else {
+      setMessage("📩 Aguardando confirmação de pagamento... Volte à aba do teste.");
+    }
+  </script>
 </body>
 </html>
