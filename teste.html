@@ -9,19 +9,6 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
-  <style>
-    .spinner {
-      border: 3px solid rgba(255,255,255,0.3);
-      border-top: 3px solid gold;
-      border-radius: 50%;
-      width: 18px;
-      height: 18px;
-      animation: spin 1s linear infinite;
-      display: inline-block;
-      margin-right: 8px;
-    }
-    @keyframes spin { 100% { transform: rotate(360deg); } }
-  </style>
 </head>
 
 <body class="home-bg">
@@ -49,19 +36,17 @@
       </audio>
     </div>
 
-    <!-- Pagamento -->
-    <div class="card paywall" id="paywall" style="display:none;">
-      <div class="result-title">🧠 Será que você está acima da média?</div>
-      <p class="pay-info">Descubra seu resultado completo — escolha a forma de pagamento:</p>
+    <!-- Paywall / Pagamento -->
+    <div class="card paywall" id="paywall" style="display:none">
+      <div class="result-title">🎉 PARABÉNS! VOCÊ ESTÁ ACIMA DA MÉDIA!</div>
+      <p class="pay-info">Libere seu resultado completo escolhendo a forma de pagamento:</p>
       <div class="pay-btns">
         <button id="btnCard" class="btn-gold">💳 Pagar com Cartão/Boleto (R$ 4,99)</button>
         <button id="btnPix" class="btn-pix">🟢 Pagar com PIX (R$ 3,99)</button>
       </div>
-      <div id="loadingMsg" style="display:none; text-align:center; margin-top:10px;">
-        <span class="spinner"></span> <b>Carregando pagamento...</b>
-      </div>
-      <div class="qr-wrap" id="qrWrap" style="display:none;">
-        <img id="qrImg" alt="QR Code PIX" />
+
+      <div class="qr-wrap" id="qrWrap">
+        <img id="qrImg" alt="QR Code PIX"/>
         <button class="btn" id="copyPix">Copiar código PIX</button>
         <div class="chip" id="pixStatus">Aguardando pagamento PIX...</div>
       </div>
@@ -69,17 +54,18 @@
   </div>
 
   <!-- Tela de resultado -->
-  <div class="result-overlay" id="overlay" style="display:none;">
+  <div class="result-overlay" id="overlay">
     <div class="card result-card">
       <div class="result-title">🧠 Seu QI estimado é <span id="iqNum">—</span></div>
-      <div id="iqPhrase" class="extra-message success"></div>
+      <div class="extra-message success">✨ Parabéns, mente brilhante!</div>
     </div>
   </div>
 
 <script>
 const BACKEND_URL = "https://teste-qi-backend-om69.onrender.com";
 
-const QUESTIONS = [ /* mesmas 42 perguntas completas aqui */ 
+// ================== PERGUNTAS (42) ==================
+const QUESTIONS = [
   {q:"Se 2 + 2 = ?",a:["3","4","5","6"],c:1},
   {q:"Qual número completa a sequência: 2,4,8,16,...",a:["18","20","24","32"],c:3},
   {q:"Qual é o oposto lógico de 'todos'?",a:["alguns","nenhum","vários","muitos"],c:1},
@@ -124,6 +110,7 @@ const QUESTIONS = [ /* mesmas 42 perguntas completas aqui */
   {q:"Qual a metade de 1,5?",a:["0,5","0,6","0,75","1"],c:2}
 ];
 
+// ================== LÓGICA ==================
 let current=0,correct=0;
 const qtext=document.getElementById('qtext');
 const opts=document.getElementById('opts');
@@ -132,9 +119,7 @@ const prog=document.getElementById('progress');
 const paywall=document.getElementById('paywall');
 const overlay=document.getElementById('overlay');
 const iqNum=document.getElementById('iqNum');
-const phrase=document.getElementById('iqPhrase');
 const clickSound=document.getElementById('clickSound');
-const loading=document.getElementById('loadingMsg');
 let allowSound=true;
 
 document.getElementById('toggleSound').addEventListener('change',e=>allowSound=e.target.checked);
@@ -172,80 +157,77 @@ function finish(){
   paywall.style.display='flex';
   bar.style.width="100%";
   prog.textContent="100%";
+  localStorage.setItem('qi_est',correct);
 }
 
-// Função resultado motivacional
-function iqMessage(iq){
-  if(iq<=80)return"Não existe limite para o crescimento. Treine sua mente e supere-se!";
-  if(iq<=90)return"Cada desafio é uma chance de evoluir. Continue treinando sua mente!";
-  if(iq<=100)return"Você está na média! Continue se desafiando e vá além.";
-  if(iq<=110)return"Parabéns! Sua mente está acima da média. Continue se aperfeiçoando!";
-  if(iq<=120)return"Excelente raciocínio! Sua mente trabalha de forma afiada e precisa.";
-  if(iq<=130)return"Parabéns, mente brilhante! Você está entre as mentes mais afiadas!";
-  return"Gênio! Sua mente é extraordinária. Use esse dom para conquistar o impossível.";
+// ================== PAGAMENTO ==================
+async function liberarResultado(orderId) {
+  const res = await fetch(`${BACKEND_URL}/result/${orderId}`);
+  const data = await res.json();
+  if (res.ok) {
+    overlay.style.display = "flex";
+    iqNum.textContent = data.result.score;
+  } else {
+    alert("Pagamento pendente. Aguarde a aprovação.");
+  }
 }
 
-// PAGAMENTO PIX
-async function iniciarPix(){
-  loading.style.display="block";
-  const res=await fetch(`${BACKEND_URL}/create-pix`,{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({amount:3.99,description:"Resultado Teste de QI Premium",correct,total:QUESTIONS.length})
+async function iniciarPix() {
+  const res = await fetch(`${BACKEND_URL}/create-pix`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      amount: 3.99,
+      description: "Resultado Teste de QI Premium",
+      correct,
+      total: QUESTIONS.length
+    })
   });
-  const data=await res.json();
-  loading.style.display="none";
-  if(data.qr_code_base64){
-    const qrWrap=document.getElementById("qrWrap");
-    const qrImg=document.getElementById("qrImg");
-    const copyPix=document.getElementById("copyPix");
-    qrWrap.style.display="flex";
-    qrImg.src=`data:image/png;base64,${data.qr_code_base64}`;
-    copyPix.onclick=()=>navigator.clipboard.writeText(data.qr_code);
-    const check=setInterval(async()=>{
-      const s=await fetch(`${BACKEND_URL}/payment-status/${data.id}`).then(r=>r.json());
-      if(s.status==="approved"){clearInterval(check);liberarResultado(data.orderId);}
-    },5000);
-  }else alert("Falha ao criar cobrança PIX.");
+  const data = await res.json();
+
+  if (data.qr_code_base64) {
+    const qrWrap = document.getElementById("qrWrap");
+    const qrImg = document.getElementById("qrImg");
+    const copyPix = document.getElementById("copyPix");
+    qrWrap.style.display = "flex";
+    qrImg.src = `data:image/png;base64,${data.qr_code_base64}`;
+    copyPix.onclick = () => navigator.clipboard.writeText(data.qr_code);
+
+    const check = setInterval(async () => {
+      const s = await fetch(`${BACKEND_URL}/payment-status/${data.id}`).then(r => r.json());
+      if (s.status === "approved") {
+        clearInterval(check);
+        liberarResultado(data.orderId);
+      }
+    }, 5000);
+  }
 }
 
-// PAGAMENTO CARTÃO
-async function iniciarCartao(){
-  loading.style.display="block";
-  const res=await fetch(`${BACKEND_URL}/create-order`,{method:"POST"});
-  const data=await res.json();
-  loading.style.display="none";
-  if(data.init_point){
-    window.open(data.init_point,"_blank");
-    const check=setInterval(async()=>{
-      const s=await fetch(`${BACKEND_URL}/payment-status/${data.orderId}`).then(r=>r.json());
-      if(s.status==="approved"){clearInterval(check);liberarResultado(data.orderId);}
-    },5000);
-  }else alert("Não foi possível iniciar o pagamento.");
+async function iniciarCartao() {
+  const res = await fetch(`${BACKEND_URL}/create-order`, { method: "POST" });
+  const data = await res.json();
+  if (data.init_point) {
+    window.open(data.init_point, "_blank");
+    const check = setInterval(async () => {
+      const s = await fetch(`${BACKEND_URL}/payment-status/${data.orderId}`).then(r => r.json());
+      if (s.status === "approved") {
+        clearInterval(check);
+        liberarResultado(data.orderId);
+      }
+    }, 5000);
+  }
 }
 
-async function liberarResultado(orderId){
-  const res=await fetch(`${BACKEND_URL}/result/${orderId}`);
-  const data=await res.json();
-  if(res.ok){
-    paywall.style.display="none";
-    overlay.style.display="flex";
-    const iq=data.result.score;
-    iqNum.textContent=iq;
-    phrase.textContent=iqMessage(iq);
-  }else alert("Pagamento pendente. Aguarde a aprovação.");
-}
-
-document.getElementById("btnPix").onclick=iniciarPix;
-document.getElementById("btnCard").onclick=iniciarCartao;
+document.getElementById("btnPix").onclick = iniciarPix;
+document.getElementById("btnCard").onclick = iniciarCartao;
 
 // TIMER
 let sec=600;
 window._tick=setInterval(()=>{
   sec--;
-  const m=String(Math.floor(sec/60)).padStart(2,"0");
-  const s=String(sec%60).padStart(2,"0");
-  document.getElementById("timer").textContent=`${m}:${s}`;
+  const m=String(Math.floor(sec/60)).padStart(2,'0');
+  const s=String(sec%60).padStart(2,'0');
+  document.getElementById('timer').textContent=`${m}:${s}`;
   if(sec<=0)finish();
 },1000);
 
