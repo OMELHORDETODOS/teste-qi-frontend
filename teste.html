@@ -9,6 +9,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+  <!-- jsPDF para o PDF do resultado -->
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
+
   <style>
     .spinner {
       border: 3px solid rgba(255,255,255,0.3);
@@ -22,6 +26,50 @@
       vertical-align: middle;
     }
     @keyframes spin { 100% { transform: rotate(360deg); } }
+
+    /* ===== MODAL DOURADO DE APROVAÇÃO ===== */
+    .approve-overlay {
+      position: fixed; inset: 0;
+      display: none;
+      align-items: center; justify-content: center;
+      background: rgba(0,0,0,.55);
+      z-index: 9999;
+    }
+    .approve-card {
+      width: min(560px, 92vw);
+      background: linear-gradient(135deg, #d4af37, #f4e08a, #d4af37);
+      color: #111;
+      border-radius: 18px;
+      padding: 22px 22px 18px;
+      box-shadow: 0 10px 40px rgba(212,175,55,.55), inset 0 0 30px rgba(255,255,255,.35);
+      text-align: center;
+      animation: fadeIn .25s ease-out, pulseGlow 1.2s ease-in-out infinite;
+      border: 1px solid rgba(0,0,0,.08);
+    }
+    .approve-title {
+      font-size: 1.2rem; font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .approve-sub {
+      font-size: .95rem; opacity: .85;
+    }
+    @keyframes fadeIn { from { transform: translateY(6px); opacity: 0 } to { transform: translateY(0); opacity: 1 } }
+    @keyframes pulseGlow { 0% { box-shadow: 0 10px 40px rgba(212,175,55,.55), inset 0 0 16px rgba(255,255,255,.25) }
+                           50%{ box-shadow: 0 12px 46px rgba(212,175,55,.7),  inset 0 0 24px rgba(255,255,255,.35) }
+                           100%{box-shadow: 0 10px 40px rgba(212,175,55,.55), inset 0 0 16px rgba(255,255,255,.25)} }
+
+    /* Botões extras no resultado (PDF e Share) */
+    .result-actions {
+      display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 14px;
+    }
+    .btn-gold-solid {
+      background: linear-gradient(135deg, #f5d76e, #d4af37);
+      color: #111; border: none;
+      padding: 10px 14px; border-radius: 12px;
+      cursor: pointer; font-weight: 700;
+      box-shadow: 0 6px 18px rgba(212,175,55,.35);
+    }
+    .btn-gold-solid:hover { filter: brightness(1.05); transform: translateY(-1px); }
   </style>
 </head>
 
@@ -72,22 +120,40 @@
     <div class="card result-card">
       <div class="result-title">🧠 Seu QI estimado é <span id="iqNum">—</span></div>
       <div class="extra-message success" id="iqPhrase"></div>
-      <button class="btn" onclick="window.location.reload()">🔁 Refazer o teste</button>
+
+      <!-- Ações: PDF + SHARE + Refazer -->
+      <div class="result-actions">
+        <button class="btn-gold-solid" id="btnPdf">💾 Baixar resultado em PDF</button>
+        <button class="btn-gold-solid" id="btnShare">📤 Compartilhar resultado</button>
+        <button class="btn" onclick="window.location.reload()">🔁 Refazer o teste</button>
+      </div>
     </div>
   </div>
 
+  <!-- MODAL DOURADO DE APROVAÇÃO -->
+  <div class="approve-overlay" id="approveModal">
+    <div class="approve-card">
+      <div class="approve-title">💳 Pagamento aprovado!</div>
+      <div class="approve-sub">Seu resultado foi liberado. Preparando a exibição...</div>
+    </div>
+  </div>
+
+  <!-- Som metálico premium de aprovação (diferente do clique) -->
+  <audio id="approveSound">
+    <source src="data:audio/wav;base64,UklGRqIAAABXQVZFZm10IBAAAAABAAEAIlYAAB9AAACABAAZGF0YaAAAACAgICAf39/f39/f4GBgYODg4eHh4+Pj5OTk5+fn6CgoKioqKqampp+fn6CgoJ+fn5+fn56enp6enp6enp6e" type="audio/wav">
+  </audio>
+
 <script>
 const BACKEND_URL = "https://teste-qi-backend-om69.onrender.com";
+const SHARE_URL   = "https://omelhordetodos.github.io/TESTEDEQIB/";
 
-// 🕐 Acordar o servidor automaticamente
+// 🕐 Acordar o servidor automaticamente (sem alterar seu fluxo)
 (async () => {
   try {
     const res = await fetch(`${BACKEND_URL}/`);
-    const data = await res.json();
-    console.log("Servidor pronto:", data.status);
-  } catch {
-    console.warn("Servidor ainda dormindo...");
-  }
+    await res.json();
+    console.log("Servidor pronto");
+  } catch { console.warn("Servidor ainda acordando..."); }
 })();
 
 // ================== PERGUNTAS (42) ==================
@@ -147,6 +213,8 @@ const overlay=document.getElementById('overlay');
 const iqNum=document.getElementById('iqNum');
 const iqPhrase=document.getElementById('iqPhrase');
 const clickSound=document.getElementById('clickSound');
+const approveModal=document.getElementById('approveModal');
+const approveSound=document.getElementById('approveSound');
 let allowSound=true;
 
 document.getElementById('toggleSound').addEventListener('change',e=>allowSound=e.target.checked);
@@ -187,21 +255,34 @@ function finish(){
   localStorage.setItem('qi_est',correct);
 }
 
+// ======= FRASE POR FAIXA DE QI (tabela que você definiu) =======
+function frasePorQI(iq){
+  if(iq<=80)  return "Não existe limite para o crescimento. Treine sua mente e supere-se!";
+  if(iq<=90)  return "Cada desafio é uma chance de evoluir. Continue treinando sua mente!";
+  if(iq<=100) return "Você está na média! Continue se desafiando e vá além.";
+  if(iq<=110) return "Parabéns! Sua mente está acima da média. Continue se aperfeiçoando!";
+  if(iq<=120) return "Excelente raciocínio! Sua mente trabalha de forma afiada e precisa.";
+  if(iq<=130) return "Parabéns, mente brilhante! Você está entre as mentes mais afiadas!";
+  return "Gênio! Sua mente é extraordinária. Use esse dom para conquistar o impossível.";
+}
+
 // ================== PAGAMENTO ==================
 async function liberarResultado(orderId){
   const res=await fetch(`${BACKEND_URL}/result/${orderId}`);
   const data=await res.json();
   if(res.ok){
-    overlay.style.display="flex";
-    iqNum.textContent=data.result.score;
-    const iq=data.result.score;
-    if(iq<=80)iqPhrase.textContent="Não existe limite para o crescimento. Treine sua mente e supere-se!";
-    else if(iq<=90)iqPhrase.textContent="Cada desafio é uma chance de evoluir. Continue treinando sua mente!";
-    else if(iq<=100)iqPhrase.textContent="Você está na média! Continue se desafiando e vá além.";
-    else if(iq<=110)iqPhrase.textContent="Parabéns! Sua mente está acima da média. Continue se aperfeiçoando!";
-    else if(iq<=120)iqPhrase.textContent="Excelente raciocínio! Sua mente trabalha de forma afiada e precisa.";
-    else if(iq<=130)iqPhrase.textContent="Parabéns, mente brilhante! Você está entre as mentes mais afiadas!";
-    else iqPhrase.textContent="Gênio! Sua mente é extraordinária. Use esse dom para conquistar o impossível.";
+    // 1) Mostrar modal dourado e tocar o som metálico premium
+    try { approveSound.currentTime = 0; approveSound.play(); } catch(e){}
+    approveModal.style.display = "flex";
+
+    // 2) Após 2s, fecha modal e mostra o resultado
+    setTimeout(()=>{
+      approveModal.style.display = "none";
+      overlay.style.display="flex";
+      const iq=data.result.score;
+      iqNum.textContent=iq;
+      iqPhrase.textContent = frasePorQI(iq);
+    }, 2000);
   } else {
     document.getElementById("pixStatus").textContent="Pagamento pendente. Aguarde a aprovação.";
   }
@@ -255,6 +336,73 @@ async function iniciarCartao(){
 
 document.getElementById("btnPix").onclick=iniciarPix;
 document.getElementById("btnCard").onclick=iniciarCartao;
+
+// ======= PDF: Baixar resultado =======
+document.getElementById("btnPdf").addEventListener("click", ()=>{
+  const iq = document.getElementById("iqNum").textContent || "—";
+  const frase = document.getElementById("iqPhrase").textContent || "";
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: "pt", format: "a4" });
+
+  // Fundo preto
+  doc.setFillColor(0,0,0);
+  doc.rect(0,0,595,842,"F");
+
+  // Dourado
+  const gold = [212,175,55];
+
+  // "Logo" (texto estilizado)
+  doc.setFont("helvetica","bold");
+  doc.setTextColor(gold[0],gold[1],gold[2]);
+  doc.setFontSize(20);
+  doc.text("★ TESTE DE QI PREMIUM ★", 297, 90, { align: "center" });
+
+  // Título
+  doc.setFontSize(28);
+  doc.text("Resultado do seu Teste de QI", 297, 150, { align: "center" });
+
+  // QI
+  doc.setFontSize(60);
+  doc.text(`${iq}`, 297, 260, { align: "center" });
+
+  // Linha
+  doc.setDrawColor(gold[0],gold[1],gold[2]);
+  doc.setLineWidth(1.2);
+  doc.line(120, 290, 475, 290);
+
+  // Frase
+  doc.setFontSize(16);
+  const fraseWidth = 420;
+  const lines = doc.splitTextToSize(frase, fraseWidth);
+  doc.text(lines, 297, 340, { align: "center", maxWidth: fraseWidth });
+
+  // Rodapé
+  doc.setFontSize(12);
+  doc.text("© 2025 Teste de QI Premium — visual preto & dourado", 297, 800, { align: "center" });
+
+  doc.save("resultado-teste-qi-premium.pdf");
+});
+
+// ======= Compartilhar resultado =======
+document.getElementById("btnShare").addEventListener("click", async ()=>{
+  const iq = document.getElementById("iqNum").textContent || "—";
+  const frase = document.getElementById("iqPhrase").textContent || "";
+  const title = "Meu resultado no Teste de QI Premium";
+  const text = `Meu QI estimado: ${iq}.\n${frase}`;
+  const url = SHARE_URL;
+
+  if (navigator.share) {
+    try { await navigator.share({ title, text, url }); }
+    catch(e){ /* usuário cancelou */ }
+  } else {
+    try {
+      await navigator.clipboard.writeText(`${title}\n${text}\n${url}`);
+      alert("Link copiado para a área de transferência!");
+    } catch {
+      alert("Não foi possível compartilhar automaticamente. Copie o link: " + url);
+    }
+  }
+});
 
 // TIMER
 let sec=600;
