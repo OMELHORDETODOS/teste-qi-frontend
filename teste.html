@@ -298,7 +298,7 @@ async function iniciarPix(){
     const res=await fetch(`${BACKEND_URL}/create-pix`,{
       method:"POST",
       headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({amount:3.99,description:"Resultado Teste de QI Premium",correct,total:QUESTIONS.length})
+      body:JSON.stringify({amount:1.00,description:"Resultado Teste de QI Premium",correct,total:QUESTIONS.length})
     });
     const data=await res.json();
     if(data.qr_code_base64){
